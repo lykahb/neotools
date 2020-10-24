@@ -4,7 +4,7 @@ from collections import OrderedDict
 from usb import util
 
 from alphatools.message import Message, MessageConst, send_message
-from alphatools.util import calculate_data_checksum, buf_to_string, buf_to_int
+from alphatools.util import calculate_data_checksum, buf_to_string, buf_to_int, AlphatoolsError
 
 logger = logging.getLogger(__name__)
 FILE_ATTRIBUTES_FORMAT = OrderedDict([
@@ -51,7 +51,7 @@ def get_file_attributes(device, applet_id, index):
         # Entry not found. This probably just means that the iteration has exceeded the number of files available.
         return None
     if response.command() != MessageConst.RESPONSE_GET_FILE_ATTRIBUTES:
-        raise ValueError('Unexpected response %s' % response)
+        raise AlphatoolsError('Unexpected response %s' % response)
     length = response.argument(1, 4)
     checksum = response.argument(5, 2)
     assert length == FileConst.SIZE
@@ -125,7 +125,7 @@ def read_extended_data(device, size):
             result.extend(buf)
             remaining = remaining - len(buf)
         else:
-            raise ValueError('Unexpected response %s' % response)
+            raise AlphatoolsError('Unexpected response %s' % response)
 
     return result.tobytes()
 

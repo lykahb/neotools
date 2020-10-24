@@ -4,7 +4,7 @@ from alphatools.message import Message, MessageConst, send_message
 
 import logging
 
-from alphatools.util import buf_to_string, buf_to_int, calculate_data_checksum
+from alphatools.util import buf_to_string, buf_to_int, calculate_data_checksum, AlphatoolsError
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class Applet:
     def from_raw_header(buf):
         string_fields = ['name', 'info']
         if len(buf) != HEADER_SIZE:
-            raise ValueError('Invalid header size %s' % len(buf))
+            raise AlphatoolsError('Invalid header size %s' % len(buf))
 
         applet = {
             k: buf_to_int(buf, offset, width)
@@ -75,7 +75,7 @@ class Applet:
             applet[k] = buf_to_string(buf, offset, width)
 
         if applet['signature'] != SIGNATURE:
-            raise ValueError('Invalid applet signature %s', applet['signature'])
+            raise AlphatoolsError('Invalid applet signature %s', applet['signature'])
 
         return applet
 
@@ -108,7 +108,7 @@ def raw_read_applet_headers(device, index):
     size = response.argument(1, 4)
     expected_checksum = response.argument(5, 2)
     if size > LIST_APPLETS_REQUEST_COUNT * HEADER_SIZE:
-        raise ValueError('rawReadAppletHeaders: reply will return too much data!')
+        raise AlphatoolsError('rawReadAppletHeaders: reply will return too much data!')
 
     if size == 0:
         return []
@@ -119,5 +119,5 @@ def raw_read_applet_headers(device, index):
             'rawReadAppletHeaders: read returned a partial header (expected header size %s, bytes read %s',
             HEADER_SIZE, len(buf))
     if calculate_data_checksum(buf) != expected_checksum:
-        raise ValueError('rawReadAppletHeaders: data checksum error')
+        raise AlphatoolsError('rawReadAppletHeaders: data checksum error')
     return buf

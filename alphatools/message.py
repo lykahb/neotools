@@ -26,6 +26,8 @@
 # 
 # -->  bfffa943 : 00000000 : 8  =   1b ff ff ff ff a0 00 b7   ........
 # <--   bfffa943 : 00000000 : 8  =   59 00 00 10 00 00 08 71   Y......q
+from alphatools.util import AlphatoolsError
+
 
 class MessageConst:
     REQUEST_VERSION = 0x00  # (len32, csum16): Obtain the OS version information. */
@@ -121,7 +123,7 @@ class Message:
 
     @staticmethod
     def _validate_offset_width(offset, width):
-        if width < 1 or width > 4:
+        if not (1 <= width <= 4):
             raise ValueError('Invalid width')
         if offset < 1 or offset + width > 7:
             raise ValueError('Invalid offset')

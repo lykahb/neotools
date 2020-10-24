@@ -5,36 +5,44 @@ import usb.core
 from usb import util
 
 from alphatools.applet import AppletIds
+from alphatools.util import AlphatoolsError
 
 logger = logging.getLogger(__name__)
 
 VENDOR_ID = 0x081e  # USB Vendor ID for the Neo, operating as a keyboard.
 HID_PRODUCT_ID = 0xbd04  # USB Product ID for the Neo, operating as a keyboard.
 COM_PRODUCT_ID = 0xbd01  # USB Product ID for the Neo, operating as a comms device
+HUB_PRODUCT_ID = 0x0100
 PROTOCOL_VERSION = 0x0230  # Minimum ASM protocol version that the device must support.
 
 
 class Device:
-    def __init__(self, dev, in_endpoint, out_endpoint):
+    def __init__(self, dev, in_endpoint, out_endpoint, is_kernel_driver_detached):
         self.dev = dev
         self.in_endpoint = in_endpoint
         self.out_endpoint = out_endpoint
+        self.is_kernel_driver_detached = is_kernel_driver_detached
 
     @staticmethod
     def init():
-        logger.info('')
+        logger.info('Searching for device')
         devices = list(usb.core.find(find_all=True, idVendor=VENDOR_ID))
         if len(devices) == 0:
-            raise ValueError('Device not found')
+            raise AlphatoolsError('Device not found')
         elif len(devices) > 1:
-            raise ValueError('More than one device is connected')
+            raise AlphatoolsError('More than one device is connected')
         dev = devices[0]
 
+        is_kernel_driver_detached = False
         if dev.idProduct == HID_PRODUCT_ID:
+            if dev.is_kernel_driver_active(0):
+                logger.debug('Detaching kernel driver')
+                dev.detach_kernel_driver(0)
+                is_kernel_driver_detached = True
             Device.flip_to_comms_mode(dev)
             util.dispose_resources(dev)
+            dev = None
             logger.info('Connecting to Neo in communication mode')
-            dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
             while dev is None:
                 sleep(0.1)
                 dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
@@ -49,16 +57,14 @@ class Device:
                 util.endpoint_direction(ep.bEndpointAddress) == direction
             eps = list(filter(predicate, endpoints))
             if len(eps) == 0:
-                raise ValueError('Cannot find endpoint with direction %s' % direction)
+                raise AlphatoolsError('Cannot find endpoint with direction %s' % direction)
             return eps[0]
 
-        return Device(dev, get_endpoint(util.ENDPOINT_IN), get_endpoint(util.ENDPOINT_OUT))
+        return Device(dev, get_endpoint(util.ENDPOINT_IN), get_endpoint(util.ENDPOINT_OUT), is_kernel_driver_detached)
 
     @staticmethod
     def flip_to_comms_mode(dev):
         logger.info('Switching Neo to communication mode')
-        if dev.is_kernel_driver_active(0):
-            dev.detach_kernel_driver(0)
         # There is black magic here - the sequences used are not documented, but determined from a bus trace.
         dev.set_configuration()
         for i in [0xe0, 0xe1, 0xe2, 0xe3, 0xe4]:
@@ -69,6 +75,10 @@ class Device:
                 wIndex=1,  # interface
                 data_or_wLength=[i]  # report value
             )
+
+    def dispose(self):
+        if self.is_kernel_driver_detached:
+            self.dev.attach_kernel_driver(0)
 
     def read(self, length, timeout=1000):
         result = []
@@ -102,7 +112,7 @@ class Device:
 
     def reset(self):
         """ Reset the device to a known state. Succeeds if device is supported and working correctly. """
-        command_request_reset = [0x3f, 0xff, 0x00, 0x72, 0x65, 0x73, 0x65, 0x74]  # '?\xff\x00reset'
+        command_request_reset = b'?\xff\x00reset'
         self.write(command_request_reset)
 
     def switch_applet(self, applet_id):
@@ -114,7 +124,7 @@ class Device:
         self.write(command_request_switch)
         response = self.read(8)
         if response != command_response_switched:
-            raise ValueError('Failed to switch to applet %s' % applet_id)
+            raise AlphatoolsError('Failed to switch to applet %s' % applet_id)
 
     def hello(self):
         """Ping the device for the ASM protocol version number. This will put the Neo in
@@ -133,8 +143,8 @@ class Device:
             self.reset()
             sleep(0.1)  # seconds
         if retries < 0:
-            raise ValueError("This device doesn't look like it wants to talk to us - bailing out.")
+            raise AlphatoolsError("This device doesn't look like it wants to talk to us - bailing out.")
 
         version = int.from_bytes(buf[0:2], byteorder='big')
         if version < PROTOCOL_VERSION:
-            raise ValueError('ASM protocol version not supported: %s' % version)
+            raise AlphatoolsError('ASM protocol version not supported: %s' % version)
