@@ -27,79 +27,79 @@
 # -->  bfffa943 : 00000000 : 8  =   1b ff ff ff ff a0 00 b7   ........
 # <--   bfffa943 : 00000000 : 8  =   59 00 00 10 00 00 08 71   Y......q
 
+class MessageConst:
+    REQUEST_VERSION = 0x00  # (len32, csum16): Obtain the OS version information. */
+    REQUEST_01 = 0x01  # Unknown (generates response 8f). */
+    REQUEST_BLOCK_WRITE = 0x02  # (len32, csum16): write a 1k or less block of data. */
+    REQUEST_03 = 0x03  # Unknown (generates response 0x8f). */
+    REQUEST_LIST_APPLETS = 0x04  # (first32, count16): read an array of applet headers. */
+    REQUEST_WRITE_APPLET = 0x06  # (len32, z16): write a new applet. */
+    REQUEST_07 = 0x07  # (z48): unknown - used when writing an applet. */
+    REQUEST_RESTART = 0x08  # (z48): causes the device to reset and restart as a HID device. */
+    REQUEST_SET_BAUDRATE = 0x09  # (baud32, z16). Try to set the specified baud rate. */
+    REQUEST_0A = 0x0a  # Unknown - returns response 0x90 in tests & Neo displays nothing. */
+    REQUEST_0B = 0x0b  # (z48): unknown - used when writing an applet. */
+    REQUEST_GET_SETTINGS = 0x0c  # (flags, applet16): read the specified file attributes. */
+    REQUEST_SET_SETTINGS = 0x0d  # (flags, applet16): write the specified file attributes. */
+    REQUEST_SET_APPLET = 0x0e  # (z32, applet16): used when setting applet properties. */
+    REQUEST_READ_APPLET = 0x0f  # (z32, applet16): used when reading an applet. */
+    REQUEST_BLOCK_READ = 0x10  # (z48): Request the next requested block of data from the device. */
+    REQUEST_ERASE_APPLETS = 0x11  # (z48): causes Neo to erase all smart applets - may take a very long time to return a reply. */
+    REQUEST_READ_FILE = 0x12  # (index32, applet16): used to read data from the specified file. */
+    REQUEST_GET_FILE_ATTRIBUTES = 0x13  # (index32, applet16): used to read the file attributes. */
+    REQUEST_WRITE_FILE = 0x14  # (index8, len24, applet16): request write of a file. */
+    REQUEST_CONFIRM_WRITE_FILE = 0x15  # (z48): used to complete writing of a file. */
+    REQUEST_16 = 0x16  # (z48?): unknown - used when adding an applet. */
+    REQUEST_17 = 0x17  # (z48?): unknown - used when adding an applet. */
+    REQUEST_SMALL_ROM_UPDATER = 0x18  # (z48?): used to enter the updater ROM when adding an applet. */
+    REQUEST_19 = 0x19  # Unknown - may be specific to AlphaHub devices? Generates response 0x57. */
+    REQUEST_GET_AVAIL_SPACE = 0x1a  # (z48): used to return the available space. */
+    REQUEST_GET_USED_SPACE = 0x1b  # (select32, applet16): used to obtain the file space used by an applet select32 is zero for the largest file, non-zero for all files. */
+    REQUEST_READ_RAW_FILE = 0x1c  # (index32, applet16): used to read a file in raw mode. */
+    REQUEST_SET_FILE_ATTRIBUTES = 0x1d  # (index32, applet16): used when setting file attributes. */
+    REQUEST_COMMIT = 0x1e  # (index32, applet16): used to commit changes following SET_FILE_ATTRIBUTES. */
+    REQUEST_WRITE_RAW_FILE = 0x1f  # (index8, len24, applet16): request write of a file. */
 
-REQUEST_VERSION = 0x00  # (len32, csum16): Obtain the OS version information. */
-REQUEST_01 = 0x01  # Unknown (generates response 8f). */
-REQUEST_BLOCK_WRITE = 0x02  # (len32, csum16): write a 1k or less block of data. */
-REQUEST_03 = 0x03  # Unknown (generates response 0x8f). */
-REQUEST_LIST_APPLETS = 0x04  # (first32, count16): read an array of applet headers. */
-REQUEST_WRITE_APPLET = 0x06  # (len32, z16): write a new applet. */
-REQUEST_07 = 0x07  # (z48): unknown - used when writing an applet. */
-REQUEST_RESTART = 0x08  # (z48): causes the device to reset and restart as a HID device. */
-REQUEST_SET_BAUDRATE = 0x09  # (baud32, z16). Try to set the specified baud rate. */
-REQUEST_0A = 0x0a  # Unknown - returns response 0x90 in tests & Neo displays nothing. */
-REQUEST_0B = 0x0b  # (z48): unknown - used when writing an applet. */
-REQUEST_GET_SETTINGS = 0x0c  # (flags, applet16): read the specified file attributes. */
-REQUEST_SET_SETTINGS = 0x0d  # (flags, applet16): write the specified file attributes. */
-REQUEST_SET_APPLET = 0x0e  # (z32, applet16): used when setting applet properties. */
-REQUEST_READ_APPLET = 0x0f  # (z32, applet16): used when reading an applet. */
-REQUEST_BLOCK_READ = 0x10  # (z48): Request the next requested block of data from the device. */
-REQUEST_ERASE_APPLETS = 0x11  # (z48): causes Neo to erase all smart applets - may take a very long time to return a reply. */
-REQUEST_READ_FILE = 0x12  # (index32, applet16): used to read data from the specified file. */
-REQUEST_GET_FILE_ATTRIBUTES = 0x13  # (index32, applet16): used to read the file attributes. */
-REQUEST_WRITE_FILE = 0x14  # (index8, len24, applet16): request write of a file. */
-REQUEST_CONFIRM_WRITE_FILE = 0x15  # (z48): used to complete writing of a file. */
-REQUEST_16 = 0x16  # (z48?): unknown - used when adding an applet. */
-REQUEST_17 = 0x17  # (z48?): unknown - used when adding an applet. */
-REQUEST_SMALL_ROM_UPDATER = 0x18  # (z48?): used to enter the updater ROM when adding an applet. */
-REQUEST_19 = 0x19  # Unknown - may be specific to AlphaHub devices? Generates response 0x57. */
-REQUEST_GET_AVAIL_SPACE = 0x1a  # (z48): used to return the available space. */
-REQUEST_GET_USED_SPACE = 0x1b  # (select32, applet16): used to obtain the file space used by an applet select32 is zero for the largest file, non-zero for all files. */
-REQUEST_READ_RAW_FILE = 0x1c  # (index32, applet16): used to read a file in raw mode. */
-REQUEST_SET_FILE_ATTRIBUTES = 0x1d  # (index32, applet16): used when setting file attributes. */
-REQUEST_COMMIT = 0x1e  # (index32, applet16): used to commit changes following SET_FILE_ATTRIBUTES. */
-REQUEST_WRITE_RAW_FILE = 0x1f  # (index8, len24, applet16): request write of a file. */
+    RESPONSE_VERSION = 0x40  # (len32, csum16): returns version information. */
+    RESPONSE_41 = 0x41  # Unknown. */
+    RESPONSE_BLOCK_WRITE = 0x42  # (z48): reply to block write request. */
+    RESPONSE_BLOCK_WRITE_DONE = 0x43  # (z43): reply to block write request. */
+    RESPONSE_LIST_APPLETS = 0x44  # (len32, csum16): returns array of applet headers. */
+    RESPONSE_45 = 0x41  # Unknown. */
+    RESPONSE_WRITE_APPLET = 0x46  # (z48?): sent in response to ASMESSAGE_REQUEST_WRITE_APPLET */
+    RESPONSE_47 = 0x47  # (z48?): unknown: sent in response to ASMESSAGE_REQUEST_0B - possibly an ok to proceed check? */
+    RESPONSE_48 = 0x48  # (z48?): unknown: sent in response to ASMESSAGE_REQUEST_07 */
+    RESPONSE_49 = 0x49  # Unknown. */
+    RESPONSE_SET_BAUDRATE = 0x4a  # (baud32, z16): response to ASMESSAGE_REQUEST_BAUDRATE. */
+    RESPONSE_GET_SETTINGS = 0x4b  # (len32, csum16): returns file attribute data. */
+    RESPONSE_SET_APPLET = 0x4c  # (z48?): reply to ASMESSAGE_REQUEST_SET_APPLET. */
+    RESPONSE_BLOCK_READ = 0x4d  # (len32, csum16): reply to  ASMESSAGE_REQUEST_BLOCK_READ. */
+    RESPONSE_BLOCK_READ_EMPTY = 0x4e  # ? */
+    RESPONSE_4F = 0x4f  # (z48?): reply to ASMESSAGE_REQUEST_ERASE_APPLETS. */
+    RESPONSE_WRITE_FILE = 0x50  # (z48): */
+    RESPONSE_CONFIRM_WRITE_FILE = 0x51  # (z48): */
+    RESPONSE_RESTART = 0x52  # (z48): */
+    RESPONSE_READ_FILE = 0x53  # (length32, ?16): */
+    RESPONSE_CCC = 0x54  # (z48?): send in response to ASMESSAGE_REQUEST_16. */
+    RESPONSE_DDD = 0x55  # (z48?): send in response to ASMESSAGE_REQUEST_17. */
+    RESPONSE_SMALL_ROM_UPDATER = 0x56  # (z48): reply to ASMESSAGE_REQUEST_SMALL_ROM_UPDATER, indicating using small ROM. */
+    RESPONSE_57 = 0x57  # Unknown. Sent in response to 0x19. */
+    RESPONSE_GET_AVAIL_SPACE = 0x58  # (flash32, ram16): reply to ASMESSAGE_REQUEST_GET_AVAIL_SPACE. ram size should be multiplied by 256. */
+    RESPONSE_GET_USED_SPACE = 0x59  # (ram32, files16): returns the number of bytes of RAM and the number of files used by an applet. */
+    RESPONSE_GET_FILE_ATTRIBUTES = 0x5a
+    RESPONSE_SET_FILE_ATTRIBUTES = 0x5b
+    RESPONSE_COMMIT = 0x5c
 
-RESPONSE_VERSION = 0x40  # (len32, csum16): returns version information. */
-RESPONSE_41 = 0x41  # Unknown. */
-RESPONSE_BLOCK_WRITE = 0x42  # (z48): reply to block write request. */
-RESPONSE_BLOCK_WRITE_DONE = 0x43  # (z43): reply to block write request. */
-RESPONSE_LIST_APPLETS = 0x44  # (len32, csum16): returns array of applet headers. */
-RESPONSE_45 = 0x41  # Unknown. */
-RESPONSE_WRITE_APPLET = 0x46  # (z48?): sent in response to ASMESSAGE_REQUEST_WRITE_APPLET */
-RESPONSE_47 = 0x47  # (z48?): unknown: sent in response to ASMESSAGE_REQUEST_0B - possibly an ok to proceed check? */
-RESPONSE_48 = 0x48  # (z48?): unknown: sent in response to ASMESSAGE_REQUEST_07 */
-RESPONSE_49 = 0x49  # Unknown. */
-RESPONSE_SET_BAUDRATE = 0x4a  # (baud32, z16): response to ASMESSAGE_REQUEST_BAUDRATE. */
-RESPONSE_GET_SETTINGS = 0x4b  # (len32, csum16): returns file attribute data. */
-RESPONSE_SET_APPLET = 0x4c  # (z48?): reply to ASMESSAGE_REQUEST_SET_APPLET. */
-RESPONSE_BLOCK_READ = 0x4d  # (len32, csum16): reply to  ASMESSAGE_REQUEST_BLOCK_READ. */
-RESPONSE_BLOCK_READ_EMPTY = 0x4e  # ? */
-RESPONSE_4F = 0x4f  # (z48?): reply to ASMESSAGE_REQUEST_ERASE_APPLETS. */
-RESPONSE_WRITE_FILE = 0x50  # (z48): */
-RESPONSE_CONFIRM_WRITE_FILE = 0x51  # (z48): */
-RESPONSE_RESTART = 0x52  # (z48): */
-RESPONSE_READ_FILE = 0x53  # (length32, ?16): */
-RESPONSE_CCC = 0x54  # (z48?): send in response to ASMESSAGE_REQUEST_16. */
-RESPONSE_DDD = 0x55  # (z48?): send in response to ASMESSAGE_REQUEST_17. */
-RESPONSE_SMALL_ROM_UPDATER = 0x56  # (z48): reply to ASMESSAGE_REQUEST_SMALL_ROM_UPDATER, indicating using small ROM. */
-RESPONSE_57 = 0x57  # Unknown. Sent in response to 0x19. */
-RESPONSE_GET_AVAIL_SPACE = 0x58  # (flash32, ram16): reply to ASMESSAGE_REQUEST_GET_AVAIL_SPACE. ram size should be multiplied by 256. */
-RESPONSE_GET_USED_SPACE = 0x59  # (ram32, files16): returns the number of bytes of RAM and the number of files used by an applet. */
-RESPONSE_GET_FILE_ATTRIBUTES = 0x5a
-RESPONSE_SET_FILE_ATTRIBUTES = 0x5b
-RESPONSE_COMMIT = 0x5c
-
-ERROR_INVALID_BAUDRATE = 0x86  # (z48): Sent if a bad BAUD rate is given. */
-ERROR_87 = 0x87  # (unknown): Unknown (seen in response to a bogus cmd 0x0b). */
-ERROR_INVALID_APPLET = 0x8a  # (z48): Specified Applet ID is not recognised. */
-ERROR_PROTOCOL = 0x8f  # (z48): Sent in response to command block checksum errors or invalid command codes. */
-ERROR_PARAMETER = 0x90  # (error32, z16): appears to return an error number (usually negative). */
-ERROR_OUTOFMEMORY = 0x91  # May be seen if trying to write too large a file. */
-ERROR_94 = 0x94  # Seen in response to sending command code 0x20 */
+    ERROR_INVALID_BAUDRATE = 0x86  # (z48): Sent if a bad BAUD rate is given. */
+    ERROR_87 = 0x87  # (unknown): Unknown (seen in response to a bogus cmd 0x0b). */
+    ERROR_INVALID_APPLET = 0x8a  # (z48): Specified Applet ID is not recognised. */
+    ERROR_PROTOCOL = 0x8f  # (z48): Sent in response to command block checksum errors or invalid command codes. */
+    ERROR_PARAMETER = 0x90  # (error32, z16): appears to return an error number (usually negative). */
+    ERROR_OUTOFMEMORY = 0x91  # May be seen if trying to write too large a file. */
+    ERROR_94 = 0x94  # Seen in response to sending command code 0x20 */
 
 
-class ASMessage:
+class Message:
     def __init__(self, command=0, args=None):
         # message is eight bytes
         self.m_data = [0] * 8
@@ -115,7 +115,7 @@ class ASMessage:
 
     @staticmethod
     def from_raw(m_data):
-        message = ASMessage()
+        message = Message()
         message.m_data = m_data
         return message
 
@@ -135,6 +135,9 @@ class ASMessage:
             value = value >> 8
             i = i - 1
 
+    def command(self):
+        return self.m_data[0]
+
     def argument(self, offset, width):
         self._validate_offset_width(offset, width)
         value = 0
@@ -145,3 +148,11 @@ class ASMessage:
     def checksum(self):
         # The first seven bytes out of eight
         return sum(self.m_data[:-1]) & 0xFF
+
+    def __str__(self):
+        return str(self.m_data)
+
+
+def send_message(device, message):
+    device.write(message.m_data)
+    return Message.from_raw(device.read(8))

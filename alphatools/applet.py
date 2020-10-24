@@ -1,10 +1,10 @@
 from collections import OrderedDict
 
-from alphatools.message import RESPONSE_LIST_APPLETS, ASMessage, REQUEST_LIST_APPLETS
+from alphatools.message import Message, MessageConst, send_message
 
 import logging
 
-from alphatools.util import buf_to_string, buf_to_int
+from alphatools.util import buf_to_string, buf_to_int, calculate_data_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +80,6 @@ class Applet:
         return applet
 
 
-def calculate_data_checksum(buf):
-    return sum(buf) & 0xFFFF
-
-
 def read_applets(device):
     applets = []
     logger.info('Retrieving applets')
@@ -103,13 +99,12 @@ def read_applets(device):
 
 # returns a list of installed applets
 def raw_read_applet_headers(device, index):
-    message = ASMessage(REQUEST_LIST_APPLETS, [{
+    message = Message(MessageConst.REQUEST_LIST_APPLETS, [{
         'value': index, 'offset': 1, 'width': 4
     }, {
         'value': LIST_APPLETS_REQUEST_COUNT, 'offset': 5, 'width': 2
     }])
-    device.write(message.m_data)
-    response = ASMessage.from_raw(device.read(8))
+    response = send_message(device, message)
     size = response.argument(1, 4)
     expected_checksum = response.argument(5, 2)
     if size > LIST_APPLETS_REQUEST_COUNT * HEADER_SIZE:
