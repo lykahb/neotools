@@ -5,11 +5,11 @@ import usb.core
 from usb import util
 
 from alphatools.applet import AppletIds
+
 logger = logging.getLogger(__name__)
 
-HID_VENDOR_ID = 0x081e  # USB Vendor ID for the Neo, operating as a keyboard.
+VENDOR_ID = 0x081e  # USB Vendor ID for the Neo, operating as a keyboard.
 HID_PRODUCT_ID = 0xbd04  # USB Product ID for the Neo, operating as a keyboard.
-COM_VENDOR_ID = 0x081e  # USB Vendor ID for the Neo, operating as a comms device.
 COM_PRODUCT_ID = 0xbd01  # USB Product ID for the Neo, operating as a comms device
 PROTOCOL_VERSION = 0x0230  # Minimum ASM protocol version that the device must support.
 
@@ -22,39 +22,41 @@ class Device:
 
     @staticmethod
     def init():
-        devices = usb.core.find(find_all=True, idVendor=HID_VENDOR_ID, idProduct=HID_PRODUCT_ID)
-
+        logger.info('')
+        devices = list(usb.core.find(find_all=True, idVendor=VENDOR_ID))
         if len(devices) == 0:
             raise ValueError('Device not found')
         elif len(devices) > 1:
             raise ValueError('More than one device is connected')
         dev = devices[0]
 
-        Device.flip_to_comms_mode(dev)
-        util.dispose_resources(dev)
+        if dev.idProduct == HID_PRODUCT_ID:
+            Device.flip_to_comms_mode(dev)
+            util.dispose_resources(dev)
+            logger.info('Connecting to Neo in communication mode')
+            dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
+            while dev is None:
+                sleep(0.1)
+                dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
 
-        # Connect to comms device
-        devices = usb.core.find(find_all=True, idVendor=HID_VENDOR_ID, idProduct=COM_PRODUCT_ID)
         cfg = dev[0]
         intf = cfg[(0, 0)]
+        endpoints = intf.endpoints()
 
-        in_endpoint = None
-        out_endpoint = None
-        for endpoint in intf:
-            type = util.endpoint_type(endpoint.bmAttributes)
-            direction = util.endpoint_direction(endpoint.bEndpointAddress)
-            if type != util.ENDPOINT_TYPE_BULK:
-                continue
+        def get_endpoint(direction):
+            predicate = lambda ep: \
+                util.endpoint_type(ep.bmAttributes) == util.ENDPOINT_TYPE_BULK and \
+                util.endpoint_direction(ep.bEndpointAddress) == direction
+            eps = list(filter(predicate, endpoints))
+            if len(eps) == 0:
+                raise ValueError('Cannot find endpoint with direction %s' % direction)
+            return eps[0]
 
-            if direction == util.ENDPOINT_IN and in_endpoint is None:
-                in_endpoint = endpoint
-            if direction == util.ENDPOINT_OUT and out_endpoint is None:
-                out_endpoint = endpoint
-
-        return Device(dev, in_endpoint, out_endpoint)
+        return Device(dev, get_endpoint(util.ENDPOINT_IN), get_endpoint(util.ENDPOINT_OUT))
 
     @staticmethod
     def flip_to_comms_mode(dev):
+        logger.info('Switching Neo to communication mode')
         if dev.is_kernel_driver_active(0):
             dev.detach_kernel_driver(0)
         # There is black magic here - the sequences used are not documented, but determined from a bus trace.
@@ -68,24 +70,26 @@ class Device:
                 data_or_wLength=[i]  # report value
             )
 
-    def read(self, length, timeout=None):
+    def read(self, length, timeout=1000):
         result = []
         remaining = length
         while remaining > 0:
             blocksize = min(8, remaining)
-            buf = self.in_endpoint.read(blocksize)
+            buf = self.in_endpoint.read(blocksize, timeout=timeout)
             result.extend(buf)
             remaining = remaining - len(buf)
-        return result
+            if len(buf) != 8:
+                break  # terminate loop on a short read
+        return bytes(result)
 
-    def write(self, message, timeout=None):
+    def write(self, message, timeout=1000):
         length = len(message)
         message_offset = 0
 
         while message_offset != length:
             blocksize = min(8, length - message_offset)
             block = message[message_offset:message_offset + blocksize]
-            self.out_endpoint.write(block)
+            self.out_endpoint.write(block, timeout=timeout)
             message_offset = message_offset + blocksize
 
     def dialogue_start(self, applet_id=AppletIds.SYSTEM):
@@ -98,13 +102,14 @@ class Device:
 
     def reset(self):
         """ Reset the device to a known state. Succeeds if device is supported and working correctly. """
-        command_request_reset = [0x3f, 0xff, 0x00, 0x72, 0x65, 0x73, 0x65, 0x74]
+        command_request_reset = [0x3f, 0xff, 0x00, 0x72, 0x65, 0x73, 0x65, 0x74]  # '?\xff\x00reset'
         self.write(command_request_reset)
 
     def switch_applet(self, applet_id):
         applet_id_bytes = applet_id.to_bytes(length=2, byteorder='big')
-        command_request_switch = [0x3f, 0x53, 0x77, 0x74, 0x63, 0x68, applet_id_bytes[0], applet_id_bytes[1]]
-        command_response_switched = [0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x65, 0x64]
+        command_request_switch = [0x3f, 0x53, 0x77, 0x74, 0x63, 0x68, applet_id_bytes[0],
+                                  applet_id_bytes[1]]  # '?SwtchXX'
+        command_response_switched = b'Switched'
 
         self.write(command_request_switch)
         response = self.read(8)

@@ -1,4 +1,4 @@
-# Alphasmart-tools
+# Alphatools
 
 This project aims to create cross-platform command-line tools that replace Neo Manager.
 

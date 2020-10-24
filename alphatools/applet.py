@@ -1,8 +1,11 @@
 from collections import OrderedDict
 
-from alphatools.message import RESPONSE_LIST_APPLETS, ASMessage
+from alphatools.message import RESPONSE_LIST_APPLETS, ASMessage, REQUEST_LIST_APPLETS
 
 import logging
+
+from alphatools.util import buf_to_string, buf_to_int
+
 logger = logging.getLogger(__name__)
 
 # Applet fields with offset and width in to the applet header data 
@@ -15,7 +18,7 @@ APPLET_HEADER_FORMAT = OrderedDict([
     ('flags', (0x10, 4)),  # Byte offset of the flags field.
     ('applet_id', (0x14, 2)),  # Byte offset of the applet ID field.
     ('header_version', (0x16, 1)),  # Byte offset of the Header version code field.
-    ('file_count', (0x17, 1)),  # Byte offset of the  file count field.
+    ('file_count', (0x17, 1)),  # Byte offset of the file count field.
     ('name', (0x18, 36)),  # Byte offset of the display name.
     ('version_major', (0x3c, 1)),  # Byte offset of the Major version number field.
     ('version_minor', (0x3d, 1)),  # Minor version number field.
@@ -63,13 +66,13 @@ class Applet:
             raise ValueError('Invalid header size %s' % len(buf))
 
         applet = {
-            k: int.from_bytes(buf[offset:width], byteorder='big', signed=False)
+            k: buf_to_int(buf, offset, width)
             for k, (offset, width) in APPLET_HEADER_FORMAT.items()
             if k not in string_fields
         }
         for k in string_fields:
             (offset, width) = APPLET_HEADER_FORMAT[k]
-            applet[k] = str(buf[offset, width])
+            applet[k] = buf_to_string(buf, offset, width)
 
         if applet['signature'] != SIGNATURE:
             raise ValueError('Invalid applet signature %s', applet['signature'])
@@ -83,21 +86,24 @@ def calculate_data_checksum(buf):
 
 def read_applets(device):
     applets = []
-    # TODO: add dialog start/end
+    logger.info('Retrieving applets')
+    device.dialogue_start()
     while True:
         buf = raw_read_applet_headers(device, len(applets))
         header_count = int(len(buf) / HEADER_SIZE)
         for index in range(0, header_count):
-            applet = Applet.from_raw_header(buf[index * HEADER_SIZE:HEADER_SIZE])
+            applet_raw = buf[index * HEADER_SIZE:(index + 1) * HEADER_SIZE]
+            applet = Applet.from_raw_header(applet_raw)
             applets.append(applet)
         if header_count < LIST_APPLETS_REQUEST_COUNT:
             break
+    device.dialogue_end()
     return applets
 
 
 # returns a list of installed applets
 def raw_read_applet_headers(device, index):
-    message = ASMessage(RESPONSE_LIST_APPLETS, [{
+    message = ASMessage(REQUEST_LIST_APPLETS, [{
         'value': index, 'offset': 1, 'width': 4
     }, {
         'value': LIST_APPLETS_REQUEST_COUNT, 'offset': 5, 'width': 2

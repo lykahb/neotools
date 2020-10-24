@@ -138,7 +138,7 @@ class ASMessage:
     def argument(self, offset, width):
         self._validate_offset_width(offset, width)
         value = 0
-        for byte in self.m_data[offset:width]:
+        for byte in self.m_data[offset:offset + width]:
             value = value * 0x100 + byte
         return value
 

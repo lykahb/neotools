@@ -1,6 +1,9 @@
+import json
+
 import click
 import logging
 
+from alphatools.applet import read_applets
 from alphatools.device import Device
 
 logger = logging.getLogger(__name__)
@@ -20,9 +23,13 @@ def files(ctx, file_index):
 
 
 @cli.command('applets')
-def applets():
+def applets_cmd():
     device = Device.init()
-    print('Getting applets')
+
+    applets = read_applets(device)
+    # for applet in applets:
+    #     print(json.dumps(applet))
+    print(json.dumps(applets, indent=2))
 
 
 @files.command('read')
@@ -37,6 +44,10 @@ def read_file(ctx):
     print('writing index %s' % ctx.obj['file_index'])
 
 
-if __name__ == '__main__':
-    logger.warning('hi')
+def main():
     cli()
+
+
+if __name__ == "__main__":
+    # execute only if run as a script
+    main()
