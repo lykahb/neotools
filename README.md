@@ -25,7 +25,7 @@ There is no open-source implementation of installing applets. So this is the foc
 
 Captured with WireShark on Linux host, with NEO Manager 3.9.3 running on Windows XP virtual machine.
 
-* [connection](usb_pcap/connection.pcapng) - exchange until Neo appears in the manager.
+* [connection](usb_pcap/connection.pcapng) - Opening manager, idle for several minutes, closing manager.
 * [get_info](usb_pcap/get_info.pcapng) - "Get NEO Info" from the manager menu.
 * [install_applets_remove_unlisted](usb_pcap/install_applets_remove_unlisted.pcapng) - installing AlphaWord Plus 3.4 and Control Panel 1.07 with the checkmark for "Delete SmartApplets that are not in the Install List from all NEO devices"
 * [install_calculator302](usb_pcap/install_calculator302.pcapng) - install a single applet Calculator 3.02
@@ -34,11 +34,13 @@ Captured with WireShark on Linux host, with NEO Manager 3.9.3 running on Windows
 * [send_file3_to_device](usb_pcap/send_file3_to_device.pcapng) - File starts with the line "this is file 3 text", ends with "456"
 * [send_file4_to_device](usb_pcap/send_file4_to_device.pcapng) - File starts with the line "this is file 4 text", ends with "456"
 * [view_file](usb_pcap/view_file.pcapng) - download a text file
-* [install_multiple_fonts](usb_pcap/install_multiple_fonts.pcapng) - the default fonts micro, medium, large, very large, extra large.
+* [install_multiple_fonts](usb_pcap/install_multiple_fonts.pcapng) - The default fonts micro, medium, large, very large, extra large.
 * [install_neofont_atto11](usb_pcap/install_neofont_atto11.pcapng)
 * [install_neofont_bold6](usb_pcap/install_neofont_bold6.pcapng)
 * [install_neofont_femto9](usb_pcap/install_neofont_femto9.pcapng)
 * [install_neofont_small6](usb_pcap/install_neofont_small6.pcapng)
 * [install_neofont_tech6](usb_pcap/install_neofont_tech6.pcapng)
 
-
+Useful links
+https://www.linuxvoice.com/drive-it-yourself-usb-car-6/
+https://www.devalias.net/devalias/2018/05/13/usb-reverse-engineering-down-the-rabbit-hole/#adafruit
