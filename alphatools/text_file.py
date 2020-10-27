@@ -37,6 +37,7 @@ NEO_TO_UNICODE = [
     0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff]
 
+neo_untranslatable_character = 0
 tab_code = 9
 newline_code = 10
 return_code = 13
@@ -75,3 +76,70 @@ def export_text(text):  # from device to host
             code = NEO_TO_UNICODE[code]
         result = result + chr(code)
     return result
+
+
+def unicode_to_neo(char):
+    try:
+        return NEO_TO_UNICODE.index(char)
+    except ValueError:
+        return neo_untranslatable_character
+
+
+def import_text(text: str):
+    softbreak_interval = 40
+    hardbreak_interval = 24
+    softbreak_count = 0
+    hardbreak_count = 0
+    last_break_opportunity = 0
+    neo_buffer = []
+    min_file_size = 256
+    # TODO: should we handle BOM?
+    for char in text:
+        escape = False
+        code = unicode_to_neo(ord(char))
+        if code == 0x81:
+            # Re-map the "not" alternate character (to not clash with line-break hint)
+            code = 0xac
+        if 0xa1 >= code <= 0xbf or code in [0x09, 0x0a, 0x0d]:
+            escape = True
+        is_break = not escape and code == 0x0d
+        is_breakable = not escape and code in [0x2d, 0x20, 0x09]
+        if is_break:
+            # The current character is an implicit break.
+            last_break_opportunity = 0
+            softbreak_count = 0
+            hardbreak_count = 0
+        elif is_breakable:
+            last_break_opportunity = len(neo_buffer) - 1
+            hardbreak_count = 0
+        elif hardbreak_count > hardbreak_interval:
+            neo_buffer.append(0x8f)  # insert a hard-break character
+            softbreak_count = 0
+            hardbreak_count = 0
+            last_break_opportunity = 0
+        if escape:
+            neo_buffer.append(0xb0)
+        neo_buffer.append(code)
+        if escape:
+            neo_buffer.append(0xb0)
+
+        if softbreak_count >= softbreak_interval and last_break_opportunity:
+            # Substitute breakable characters with their breaking equivalents
+            last = neo_buffer[last_break_opportunity]
+            if last == 0x2d:
+                neo_buffer[last_break_opportunity] = 0xad
+            elif last == 0x20:
+                neo_buffer[last_break_opportunity] = 0x81
+            elif last == 0x09:
+                neo_buffer[last_break_opportunity] = 0x8d
+            else:
+                # mismatch between this code and the assignment of isBreakable
+                raise RuntimeError('Failed to encode break character')
+            softbreak_count = 0
+            hardbreak_count = 0
+            last_break_opportunity = 0
+
+        if len(neo_buffer) < min_file_size:
+            # pad with 'unused space' pad byte to to minimum file size
+            neo_buffer.extend([0xa7] * (min_file_size - len(neo_buffer)))
+        return neo_buffer

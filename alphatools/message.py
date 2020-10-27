@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 #  Example exchanges:
 # 
 # -->  bfffa943 : 00000000 : 8  =   0b 00 00 00 00 00 00 0b   ........
@@ -110,8 +114,8 @@ class Message:
         if args is None:
             args = []
 
-        for arg in args:
-            self._set_argument(**arg)
+        for (value, offset, width) in args:
+            self._set_argument(value, offset, width)
 
         self.m_data[7] = self.checksum()
 
@@ -157,4 +161,26 @@ class Message:
 
 def send_message(device, message):
     device.write(message.m_data)
+    return receive_message(device)
+
+
+def receive_message(device):
     return Message.from_raw(device.read(8))
+
+
+def assert_success(response, success_code):
+    code = response.command()
+    if code == success_code:
+        return True
+    if code == MessageConst.ERROR_INVALID_BAUDRATE:
+        logger.error('Bad baud rate', response.m_data)
+    elif code == MessageConst.ERROR_87 or MessageConst.ERROR_94:
+        logger.error('Unknown error', response.m_data)
+    elif code == MessageConst.ERROR_INVALID_APPLET:
+        logger.error('Specified Applet ID is not recognised', response.m_data)
+    elif code == MessageConst.ERROR_PROTOCOL:
+        logger.error('Protocol error', response.m_data)
+    elif code == MessageConst.ERROR_PARAMETER:
+        logger.error('Error number', response.m_data)
+    elif code == MessageConst.ERROR_OUTOFMEMORY:
+        logger.error('Out of memory', response.m_data)

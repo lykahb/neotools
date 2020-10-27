@@ -5,6 +5,7 @@ import usb.core
 from usb import util
 
 from alphatools.applet import AppletIds
+from alphatools.message import Message, MessageConst, send_message, assert_success
 from alphatools.util import AlphatoolsError
 
 logger = logging.getLogger(__name__)
@@ -76,10 +77,6 @@ class Device:
                 data_or_wLength=[i]  # report value
             )
 
-    def dispose(self):
-        if self.is_kernel_driver_detached:
-            self.dev.attach_kernel_driver(0)
-
     def read(self, length, timeout=1000):
         result = []
         remaining = length
@@ -138,7 +135,7 @@ class Device:
             buf = self.read(8, timeout=100)
             if len(buf) == 2:
                 break  # success
-            logger.warning('Unexpected byte response %s', buf)
+            logger.info('Unexpected byte response %s', buf)
             retries = retries - 1
             self.reset()
             sleep(0.1)  # seconds
@@ -148,3 +145,25 @@ class Device:
         version = int.from_bytes(buf[0:2], byteorder='big')
         if version < PROTOCOL_VERSION:
             raise AlphatoolsError('ASM protocol version not supported: %s' % version)
+
+
+def flip_to_keyboard_mode(device):
+    logger.info('Switching Neo to keyboard mode')
+    device.dialogue_start()
+    message = Message(MessageConst.REQUEST_RESTART, [])
+    response = send_message(device, message)
+    assert_success(response, MessageConst.RESPONSE_RESTART)
+    device.dialogue_end()
+
+
+def get_system_memory(device):
+    device.dialogue_start()
+    message = Message(MessageConst.REQUEST_GET_AVAIL_SPACE, [])
+    response = send_message(device, message)
+    assert response.command() == MessageConst.RESPONSE_GET_AVAIL_SPACE
+    result = {
+        'free_rom': response.argument(1, 4),
+        'free_ram': response.argument(5, 2) * 256
+    }
+    device.dialogue_end()
+    return result
