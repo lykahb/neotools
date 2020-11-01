@@ -33,7 +33,7 @@ def read_file(file_index):
     if text is None:
         print('Text file at index %s does not exist' % file_index)
         sys.exit(1)
-    text = export_text(text)
+    text = export_text_from_neo(text)
     flip_to_keyboard_mode(device)
     return text
 
@@ -57,7 +57,7 @@ def list_files():
 @command_decorator
 def write_file(file_index, text):
     device = Device.init()
-    text = text.encode('utf-8')
+    raw_bytes = import_text_to_neo(text)
     device.dialogue_start()
-    raw_write_file(device, text, AppletIds.ALPHAWORD, file_index - 1, True)
+    raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_index, True)
     device.dialogue_end()

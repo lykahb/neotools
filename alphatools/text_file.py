@@ -1,8 +1,12 @@
 import logging
-from io import StringIO
 
 logger = logging.getLogger(__name__)
 
+
+# ■δΔ∫Ńĳ❏⅔˙⇥↓↑⤓↵⤈⤉→⅓Ξαρ↕↩□√≤≥θ∞ΩβΣ !"#$%&\'()*+,-./0123456789:;<=>?@
+# ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~←€¬
+# ‚ƒ„…†‡ˆ‰Š‹ŒΦŽΠ‵‘’“”•–—˜™š›œπžŸ\xa0¡¢£¤¥¦§¨©ª«¬\xad®¯°±²³´µ¶·¸¹º»¼½
+# ¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
 NEO_TO_UNICODE = [
     0x25a0, 0x03b4, 0x0394, 0x222b, 0x0143, 0x0133, 0x274f, 0x2154,
     0x02d9, 0x21e5, 0x2193, 0x2191, 0x2913, 0x21b5, 0x2908, 0x2909,
@@ -37,55 +41,58 @@ NEO_TO_UNICODE = [
     0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff]
 
+UNICODE_TO_NEO = {code: index for (index, code) in enumerate(NEO_TO_UNICODE)}
+
 neo_untranslatable_character = 0
-tab_code = 9
-newline_code = 10
-return_code = 13
 
 
-def export_text(text):  # from device to host
+def export_text_from_neo(text):  # from device to host
     index = 0
-    result = ''
+    result = []
     while index < len(text):
         code = text[index]
         index = index + 1
-        if code == 0xa4: continue  # unused code
-        if code == 0xa7: continue  # unused code
-        if code == 0x09: code = tab_code  # pass code through the character set translation
-        if code == 0x0a: code = newline_code  # pass code through the character set translation
-        if code == 0x0d: code = newline_code  # pass code through the character set translation
-        if code == 0x81: code = 0x20  # line-breaking space
-        if code == 0x8d: code = tab_code  # line-breaking tab
-        if code == 0x8f: continue  # period break in a run of contiguous characters
-        if code == 0xa1: code = 0x20  # line-breaking space (older software versions)
-        if code == 0xa3: code = tab_code  # line-breaking tab (older software versions)
-        if code == 0xad: code = 0x2d  # line-breaking hyphen
-        if code == 0xb0:
+        is_escaped = False
+        if code in [0xa4, 0xa7]:
+            continue  # unused codes
+        elif code == 0x0d:
+            code = 0x0a  # pass code through the character set translation
+        elif code in [0x81, 0xa1]:
+            # line-breaking space.  0xa1 is from older software versions
+            code = 0x20  # line-breaking space
+        elif code == 0x8d:
+            code = 0x09  # line-breaking tab
+        elif code == 0x8f:
+            continue  # period break in a run of contiguous characters
+        elif code == 0xa3:
+            code = 0x09  # line-breaking tab (older software versions)
+        elif code == 0xad:
+            code = 0x2d  # line-breaking hyphen
+        elif code == 0xb0:
             if len(text) - index < 2:
                 logger.error('ASAlphaWordText: Unexpectedly truncated escape sequence')
             else:
-                index = index + 1
+                is_escaped = True
                 code = text[index]  # get the interpreted code directly
-                if code == 0xb0:
+                index = index + 1
+                if text[index] == 0xb0:
                     index = index + 1  # skip over a following escape code (if present)
-        if 0xa1 <= code <= 0xbf:
-            logger.error('ASAlphaWordText: possibly untrapped escape', code)
+        elif 0xa1 <= code <= 0xbf:
+            logger.error('ASAlphaWordText: possibly untrapped escape %s' % code)
             continue
-        needs_conversion = code not in [tab_code, newline_code, return_code]
-        if needs_conversion:
+        skip_conversion = code in [0x09, 0x0a, 0x0d] and not is_escaped
+        if not skip_conversion:
             code = NEO_TO_UNICODE[code]
-        result = result + chr(code)
-    return result
+        result.append(chr(code))
+    return ''.join(result)
 
 
-def unicode_to_neo(char):
-    try:
-        return NEO_TO_UNICODE.index(char)
-    except ValueError:
-        return neo_untranslatable_character
-
-
-def import_text(text: str):
+def import_text_to_neo(text: str):
+    """
+    From host to Neo
+    :param text:
+    :return:
+    """
     softbreak_interval = 40
     hardbreak_interval = 24
     softbreak_count = 0
@@ -96,32 +103,42 @@ def import_text(text: str):
     # TODO: should we handle BOM?
     for char in text:
         escape = False
-        code = unicode_to_neo(ord(char))
+        code = UNICODE_TO_NEO.get(ord(char))
+        if code is None:
+            code = neo_untranslatable_character
         if code == 0x81:
             # Re-map the "not" alternate character (to not clash with line-break hint)
             code = 0xac
-        if 0xa1 >= code <= 0xbf or code in [0x09, 0x0a, 0x0d]:
+        if 0xa1 <= code <= 0xbf or code in [0x09, 0x0a, 0x0d]:
             escape = True
+        if char == '\t':
+            code = 0x09
+        elif char in ['\r', '\n']:
+            code = 0x0d
+
         is_break = not escape and code == 0x0d
         is_breakable = not escape and code in [0x2d, 0x20, 0x09]
+        hardbreak_count = hardbreak_count + 1
+        softbreak_count = softbreak_count + 1
+
         if is_break:
             # The current character is an implicit break.
             last_break_opportunity = 0
             softbreak_count = 0
             hardbreak_count = 0
         elif is_breakable:
-            last_break_opportunity = len(neo_buffer) - 1
+            last_break_opportunity = len(neo_buffer)
             hardbreak_count = 0
-        elif hardbreak_count > hardbreak_interval:
+        elif hardbreak_count >= hardbreak_interval:
             neo_buffer.append(0x8f)  # insert a hard-break character
             softbreak_count = 0
             hardbreak_count = 0
             last_break_opportunity = 0
+
         if escape:
-            neo_buffer.append(0xb0)
-        neo_buffer.append(code)
-        if escape:
-            neo_buffer.append(0xb0)
+            neo_buffer.extend([0xb0, code, 0xb0])
+        else:
+            neo_buffer.append(code)
 
         if softbreak_count >= softbreak_interval and last_break_opportunity:
             # Substitute breakable characters with their breaking equivalents
@@ -139,7 +156,7 @@ def import_text(text: str):
             hardbreak_count = 0
             last_break_opportunity = 0
 
-        if len(neo_buffer) < min_file_size:
-            # pad with 'unused space' pad byte to to minimum file size
-            neo_buffer.extend([0xa7] * (min_file_size - len(neo_buffer)))
-        return neo_buffer
+    if len(neo_buffer) < min_file_size:
+        # pad with 'unused space' pad byte to to minimum file size
+        neo_buffer.extend([0xa7] * (min_file_size - len(neo_buffer)))
+    return bytes(neo_buffer)
