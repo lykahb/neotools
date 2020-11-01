@@ -31,7 +31,7 @@ def calculate_data_checksum(buf):
 
 
 def data_from_buf(buf_format, buf):
-    if buf_format['size'] != len(buf):
+    if buf_format['size'] is not None and buf_format['size'] != len(buf):
         raise AlphatoolsError(
             'Expected buffer of size %s, received %s' %
             (buf_format['size'], len(buf)))
@@ -46,7 +46,7 @@ def data_from_buf(buf_format, buf):
 
 
 def data_to_buf(buf_format, buf, value):
-    if buf_format['size'] != len(buf):
+    if buf_format['size'] is not None and buf_format['size'] != len(buf):
         raise AlphatoolsError(
             'Expected buffer of size %s, received %s' %
             (buf_format['size'], len(buf)))

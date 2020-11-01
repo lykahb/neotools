@@ -135,7 +135,7 @@ class Device:
             buf = self.read(8, timeout=100)
             if len(buf) == 2:
                 break  # success
-            logger.info('Unexpected byte response %s', buf)
+            logger.debug('Unexpected byte response %s', buf)
             retries = retries - 1
             self.reset()
             sleep(0.1)  # seconds

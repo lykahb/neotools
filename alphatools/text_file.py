@@ -78,7 +78,7 @@ def export_text_from_neo(text):  # from device to host
                 if text[index] == 0xb0:
                     index = index + 1  # skip over a following escape code (if present)
         elif 0xa1 <= code <= 0xbf:
-            logger.error('ASAlphaWordText: possibly untrapped escape %s' % code)
+            logger.error('ASAlphaWordText: possibly untrapped escape %s', code)
             continue
         skip_conversion = code in [0x09, 0x0a, 0x0d] and not is_escaped
         if not skip_conversion:

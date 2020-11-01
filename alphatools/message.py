@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 # 
 # -->  bfffa943 : 00000000 : 8  =   1b ff ff ff ff a0 00 b7   ........
 # <--   bfffa943 : 00000000 : 8  =   59 00 00 10 00 00 08 71   Y......q
-from alphatools.util import AlphatoolsError
 
 
 class MessageConst:
@@ -159,13 +158,16 @@ class Message:
         return str(self.m_data)
 
 
-def send_message(device, message):
+def send_message(device, message, success_code=None):
     device.write(message.m_data)
-    return receive_message(device)
+    return receive_message(device, success_code)
 
 
-def receive_message(device):
-    return Message.from_raw(device.read(8))
+def receive_message(device, success_code=None):
+    response = Message.from_raw(device.read(8))
+    if success_code is not None:
+        assert_success(response, success_code)
+    return response
 
 
 def assert_success(response, success_code):
@@ -174,7 +176,7 @@ def assert_success(response, success_code):
         return True
     if code == MessageConst.ERROR_INVALID_BAUDRATE:
         logger.error('Bad baud rate', response.m_data)
-    elif code == MessageConst.ERROR_87 or MessageConst.ERROR_94:
+    elif code in [MessageConst.ERROR_87, MessageConst.ERROR_94]:
         logger.error('Unknown error', response.m_data)
     elif code == MessageConst.ERROR_INVALID_APPLET:
         logger.error('Specified Applet ID is not recognised', response.m_data)

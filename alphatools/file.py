@@ -3,10 +3,11 @@ from collections import OrderedDict
 
 from usb import util
 
-from alphatools.applet import get_applet_resource_usage
+from alphatools.applet import get_applet_resource_usage, AppletSettingsItem, AppletSettingsType, AppletSettingsIdent, \
+    set_settings
 from alphatools.device import get_system_memory
 from alphatools.message import Message, MessageConst, send_message, receive_message, assert_success
-from alphatools.util import calculate_data_checksum, string_from_buf, int_from_buf, AlphatoolsError, data_from_buf, \
+from alphatools.util import calculate_data_checksum, AlphatoolsError, data_from_buf, \
     data_to_buf
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class FileConst:
 
 
 def get_file_attributes(device, applet_id, index):
-    logger.info('Getting file attributes', applet_id, index)
+    logger.info('Getting file attributes applet_id=%s index=%s', applet_id, index)
     device.dialogue_start()
     message = Message(MessageConst.REQUEST_GET_FILE_ATTRIBUTES, [(index, 4, 1), (applet_id, 5, 2)])
     response = send_message(device, message)
@@ -70,6 +71,9 @@ class FileAttributes:
         self.alloc_size = alloc_size
         self.flags = flags
 
+    def __str__(self):
+        return str(self.__dict__)
+
     @staticmethod
     def from_raw(buf: bytes):
         attrs = data_from_buf(FILE_ATTRIBUTES_FORMAT, buf)
@@ -81,6 +85,8 @@ class FileAttributes:
 
     def to_raw(self):
         buf = [0] * FILE_ATTRIBUTES_FORMAT['size']
+        obj = self.__dict__
+        obj['space'] = FileConst.FILE_SPACE_CODES[self.space]
         data_to_buf(FILE_ATTRIBUTES_FORMAT, buf, self.__dict__)
         return buf
 
@@ -93,6 +99,32 @@ def load_file(device, applet_id, index):
     result = raw_read_file(device, attrs.alloc_size, applet_id, index, True)
     device.dialogue_end()
     return result
+
+
+def clear_file(device, applet_id, file_index):
+    attrs = get_file_attributes(device, applet_id, file_index)
+    if attrs is None:
+        return None
+    attrs.alloc_size = attrs.min_size = 0
+
+    device.dialogue_start()
+    raw_set_file_attributes(device, attrs, applet_id, file_index)
+    message = Message(MessageConst.REQUEST_COMMIT, [(file_index, 4, 1), (applet_id, 5, 2)])
+    send_message(device, message, MessageConst.RESPONSE_COMMIT)
+    raw_write_file(device, b'', applet_id, file_index, True)
+    device.dialogue_end()
+
+
+def clear_all_files(device, applet_id):
+    device.dialogue_start()
+    settings = AppletSettingsItem(
+        AppletSettingsType.OPTION,
+        AppletSettingsIdent.ALPHAWORD_CLEARFILES,
+        [AppletSettingsIdent.SYSTEM_ON,
+         AppletSettingsIdent.SYSTEM_ON,
+         AppletSettingsIdent.SYSTEM_OFF])
+    set_settings(device, applet_id, settings)
+    device.dialogue_end()
 
 
 def read_extended_data(device, size):
@@ -151,7 +183,7 @@ def list_files(device, applet_id):
         if attrs is None:
             break
         files.append(attrs)
-        logger.debug('file listed', file_index, attrs)
+        logger.debug('file listed file_index=%s attrs=%s', file_index, attrs)
         file_index = file_index + 1
     files = sorted(files, key=lambda f: f.space)
     return files
@@ -166,12 +198,10 @@ def write_extended_data(device, buf):
         checksum = calculate_data_checksum(block)
 
         message = Message(MessageConst.REQUEST_BLOCK_WRITE, [(blocksize, 1, 4), (checksum, 5, 2)])
-        response = send_message(device, message)
-        assert_success(response, MessageConst.RESPONSE_BLOCK_WRITE)
+        response = send_message(device, message, MessageConst.RESPONSE_BLOCK_WRITE)
 
         device.write(block)
-        response = receive_message(device)
-        assert_success(response, MessageConst.RESPONSE_BLOCK_WRITE_DONE)
+        response = receive_message(device, MessageConst.RESPONSE_BLOCK_WRITE_DONE)
 
         offset = offset + blocksize
         remaining = remaining - blocksize
@@ -187,9 +217,9 @@ def raw_set_file_attributes(device, attrs, applet_id, file_index):
     IN:     0x43    ASMESSAGE_RESPONSE_BLOCK_WRITE_DONE
     """
     assert file_index < 256
+    logger.debug('Setting file attributes applet_id=%s file_index=%s attrs=%s', applet_id, file_index, attrs)
     message = Message(MessageConst.REQUEST_SET_FILE_ATTRIBUTES, [(file_index, 1, 4), (applet_id, 5, 2)])
-    response = send_message(device, message)
-    assert_success(response, MessageConst.RESPONSE_SET_FILE_ATTRIBUTES)
+    send_message(device, message, MessageConst.RESPONSE_SET_FILE_ATTRIBUTES)
     write_extended_data(device, attrs.to_raw())
 
 
@@ -198,13 +228,11 @@ def raw_write_file(device, buf, applet_id, file_index, raw):
     size = len(buf)
     command = MessageConst.REQUEST_WRITE_RAW_FILE if raw else MessageConst.REQUEST_WRITE_FILE
     message = Message(command, [(file_index, 1, 1), (size, 2, 3), (applet_id, 5, 2)])
-    response = send_message(device, message)
-    assert_success(response, MessageConst.RESPONSE_WRITE_FILE)
+    send_message(device, message, MessageConst.RESPONSE_WRITE_FILE)
     logger.debug('Writing block file data')
     write_extended_data(device, buf)
     message = Message(MessageConst.REQUEST_CONFIRM_WRITE_FILE)
-    response = send_message(device, message)
-    assert_success(response, MessageConst.RESPONSE_CONFIRM_WRITE_FILE)
+    send_message(device, message, MessageConst.RESPONSE_CONFIRM_WRITE_FILE)
     logger.info('Writing file complete')
 
 
@@ -258,7 +286,6 @@ def create_file(device, filename, password, data, applet_id):
     # Sending this message appears to bind the attributes to a new file -
     # not sending it will still result in a new file, but the attributes will not be correct.
     message = Message(MessageConst.REQUEST_COMMIT, [(file_index, 4, 1), (applet_id, 5, 2)])
-    response = send_message(device, message)
-    assert_success(response, MessageConst.RESPONSE_COMMIT)
+    response = send_message(device, message, MessageConst.RESPONSE_COMMIT)
     raw_write_file(device, data, applet_id, file_index, True)
     device.dialogue_end()
