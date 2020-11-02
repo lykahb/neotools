@@ -45,18 +45,18 @@ def data_from_buf(buf_format, buf):
     }
 
 
-def data_to_buf(buf_format, buf, value):
-    if buf_format['size'] is not None and buf_format['size'] != len(buf):
+def data_to_buf(buf_format, buf, value, buf_offset=0):
+    if buf_format['size'] is not None and buf_format['size'] + buf_offset < len(buf):
         raise AlphatoolsError(
-            'Expected buffer of size %s, received %s' %
-            (buf_format['size'], len(buf)))
+            'Buffer too small, required size=%s, received=%s, offset=%s' %
+            (buf_format['size'], len(buf), buf_offset))
     converters = {
         str: string_to_buf,
         int: int_to_buf
     }
     for k, (offset, width, typ) in buf_format['fields'].items():
         if k in value:
-            converters[typ](buf, offset, width, value[k])
+            converters[typ](buf, buf_offset + offset, width, value[k])
 
 
 class AlphatoolsError(RuntimeError):

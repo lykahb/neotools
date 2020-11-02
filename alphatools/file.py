@@ -3,8 +3,7 @@ from collections import OrderedDict
 
 from usb import util
 
-from alphatools.applet import get_applet_resource_usage, AppletSettingsItem, AppletSettingsType, AppletSettingsIdent, \
-    set_settings
+from alphatools.applet import get_applet_resource_usage
 from alphatools.device import get_system_memory
 from alphatools.message import Message, MessageConst, send_message, receive_message, assert_success
 from alphatools.util import calculate_data_checksum, AlphatoolsError, data_from_buf, \
@@ -91,12 +90,9 @@ class FileAttributes:
         return buf
 
 
-def load_file(device, applet_id, index):
-    attrs = get_file_attributes(device, applet_id, index)
-    if attrs is None:
-        return None
+def read_file(device, applet_id, file_attrs, index):
     device.dialogue_start()
-    result = raw_read_file(device, attrs.alloc_size, applet_id, index, True)
+    result = raw_read_file(device, file_attrs.alloc_size, applet_id, index, True)
     device.dialogue_end()
     return result
 
@@ -115,18 +111,6 @@ def clear_file(device, applet_id, file_index):
     device.dialogue_end()
 
 
-def clear_all_files(device, applet_id):
-    device.dialogue_start()
-    settings = AppletSettingsItem(
-        AppletSettingsType.OPTION,
-        AppletSettingsIdent.ALPHAWORD_CLEARFILES,
-        [AppletSettingsIdent.SYSTEM_ON,
-         AppletSettingsIdent.SYSTEM_ON,
-         AppletSettingsIdent.SYSTEM_OFF])
-    set_settings(device, applet_id, settings)
-    device.dialogue_end()
-
-
 def read_extended_data(device, size):
     """
     Read binary data blocks in response to some other command, handling segmentation
@@ -139,7 +123,7 @@ def read_extended_data(device, size):
             IN:     0x4d    ASMESSAGE_RESPONSE_BLOCK_READ
             OUT:    data
     """
-    logger.debug('Reading extended data of file')
+    logger.debug('Reading extended data')
     remaining = size
     message = Message(MessageConst.REQUEST_BLOCK_READ, [])
     result = util.create_buffer(0)
@@ -168,7 +152,7 @@ def raw_read_file(device, size, applet_id, index, raw):
       IN:     0x53        ASMESSAGE_RESPONSE_READ_FILE
       [block read sequence]
     """
-    logger.info('Requesting to read a file')
+    logger.info('Requesting to read a file at applet_id=%s, file_index=%s', applet_id, index)
     command = MessageConst.REQUEST_READ_RAW_FILE if raw else MessageConst.REQUEST_READ_FILE
     message = Message(command, [(size, 1, 3), (index, 4, 1), (applet_id, 5, 2)])
     send_message(device, message)
@@ -263,7 +247,6 @@ def create_file(device, filename, password, data, applet_id):
     :param password:
     :param data: The buffer to write.
     :param applet_id:
-    :param raw: The logical true for raw file read, false for cooked.
     :return: The new FileAttributes.
     """
     usage = get_applet_resource_usage(device, applet_id)

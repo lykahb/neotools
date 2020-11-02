@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 from time import sleep
 
 import usb.core
@@ -18,37 +19,52 @@ PROTOCOL_VERSION = 0x0230  # Minimum ASM protocol version that the device must s
 
 
 class Device:
-    def __init__(self, dev, in_endpoint, out_endpoint, is_kernel_driver_detached):
+    def __init__(self, dev):
         self.dev = dev
-        self.in_endpoint = in_endpoint
-        self.out_endpoint = out_endpoint
-        self.is_kernel_driver_detached = is_kernel_driver_detached
+        self.in_endpoint = None
+        self.out_endpoint = None
+        self.is_kernel_driver_detached = None
+        self.original_product = dev.idProduct
 
     @staticmethod
-    def init():
+    @contextmanager
+    def connect(init=True, dispose=True):
+        device = None
+        try:
+            device = Device(Device.find())
+            if init:
+                device.init()
+            yield device
+        finally:
+            if device and dispose:
+                device.dispose()
+
+    @staticmethod
+    def find():
         logger.info('Searching for device')
         devices = list(usb.core.find(find_all=True, idVendor=VENDOR_ID))
         if len(devices) == 0:
             raise AlphatoolsError('Device not found')
         elif len(devices) > 1:
             raise AlphatoolsError('More than one device is connected')
-        dev = devices[0]
+        return devices[0]
 
-        is_kernel_driver_detached = False
-        if dev.idProduct == HID_PRODUCT_ID:
-            if dev.is_kernel_driver_active(0):
+    def init(self):
+        self.is_kernel_driver_detached = False
+        if self.dev.idProduct == HID_PRODUCT_ID:
+            if self.dev.is_kernel_driver_active(0):
                 logger.debug('Detaching kernel driver')
-                dev.detach_kernel_driver(0)
-                is_kernel_driver_detached = True
-            Device.flip_to_comms_mode(dev)
-            util.dispose_resources(dev)
-            dev = None
+                self.dev.detach_kernel_driver(0)
+                self.is_kernel_driver_detached = True
+            self.flip_to_comms_mode()
+            util.dispose_resources(self.dev)
+            self.dev = None
             logger.info('Connecting to Neo in communication mode')
-            while dev is None:
+            while self.dev is None:
                 sleep(0.1)
-                dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
+                self.dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
 
-        cfg = dev[0]
+        cfg = self.dev[0]
         intf = cfg[(0, 0)]
         endpoints = intf.endpoints()
 
@@ -61,15 +77,19 @@ class Device:
                 raise AlphatoolsError('Cannot find endpoint with direction %s' % direction)
             return eps[0]
 
-        return Device(dev, get_endpoint(util.ENDPOINT_IN), get_endpoint(util.ENDPOINT_OUT), is_kernel_driver_detached)
+        self.in_endpoint = get_endpoint(util.ENDPOINT_IN)
+        self.out_endpoint = get_endpoint(util.ENDPOINT_OUT)
 
-    @staticmethod
-    def flip_to_comms_mode(dev):
+    def dispose(self):
+        if self.original_product == HID_PRODUCT_ID and self.dev.idProduct == COM_PRODUCT_ID:
+            self.flip_to_keyboard_mode()
+
+    def flip_to_comms_mode(self):
         logger.info('Switching Neo to communication mode')
         # There is black magic here - the sequences used are not documented, but determined from a bus trace.
-        dev.set_configuration()
+        self.dev.set_configuration()
         for i in [0xe0, 0xe1, 0xe2, 0xe3, 0xe4]:
-            dev.ctrl_transfer(
+            self.dev.ctrl_transfer(
                 bmRequestType=util.CTRL_OUT | util.CTRL_TYPE_CLASS | util.CTRL_RECIPIENT_DEVICE,
                 bRequest=9,  # SET_CONFIGURATION
                 wValue=(0x02 << 8) | 0,  # report type and ID
@@ -77,7 +97,17 @@ class Device:
                 data_or_wLength=[i]  # report value
             )
 
-    def read(self, length, timeout=1000):
+    def flip_to_keyboard_mode(self):
+        logger.info('Switching Neo to keyboard mode')
+        self.dialogue_start()
+        message = Message(MessageConst.REQUEST_RESTART, [])
+        response = send_message(self, message)
+        assert_success(response, MessageConst.RESPONSE_RESTART)
+        self.dialogue_end()
+
+    def read(self, length, timeout=None):
+        if timeout is None:
+            timeout = 1000
         result = []
         remaining = length
         while remaining > 0:
@@ -89,7 +119,9 @@ class Device:
                 break  # terminate loop on a short read
         return bytes(result)
 
-    def write(self, message, timeout=1000):
+    def write(self, message, timeout=None):
+        if timeout is None:
+            timeout = 1000
         length = len(message)
         message_offset = 0
 
@@ -145,15 +177,6 @@ class Device:
         version = int.from_bytes(buf[0:2], byteorder='big')
         if version < PROTOCOL_VERSION:
             raise AlphatoolsError('ASM protocol version not supported: %s' % version)
-
-
-def flip_to_keyboard_mode(device):
-    logger.info('Switching Neo to keyboard mode')
-    device.dialogue_start()
-    message = Message(MessageConst.REQUEST_RESTART, [])
-    response = send_message(device, message)
-    assert_success(response, MessageConst.RESPONSE_RESTART)
-    device.dialogue_end()
 
 
 def get_system_memory(device):

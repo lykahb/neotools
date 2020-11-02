@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict
 from enum import Enum
+from typing import List
 
 from alphatools.message import Message, MessageConst, send_message, receive_message
 from alphatools.util import calculate_data_checksum, AlphatoolsError, data_from_buf, data_to_buf, int_from_buf, \
@@ -13,16 +14,16 @@ logger = logging.getLogger(__name__)
 APPLET_HEADER_FORMAT = {
     'size': 0x84,  # The total size of the header
     'fields': OrderedDict([
-        ('signature', (0x00, 4, int)),  # Byte offset of the signature word field.
-        ('rom_size', (0x04, 4, int)),  # Byte offset of the ROM size field.
-        ('ram_size', (0x08, 4, int)),  # Byte offset of the size of working RAM field.
-        ('settings_offset', (0x0c, 4, int)),  # Byte offset settings parameters field.
-        ('flags', (0x10, 4, int)),  # Byte offset of the flags field.
-        ('applet_id', (0x14, 2, int)),  # Byte offset of the applet ID field.
-        ('header_version', (0x16, 1, int)),  # Byte offset of the Header version code field.
-        ('file_count', (0x17, 1, int)),  # Byte offset of the file count field.
-        ('name', (0x18, 36, str)),  # Byte offset of the display name.
-        ('version_major', (0x3c, 1, int)),  # Byte offset of the Major version number field.
+        ('signature', (0x00, 4, int)),  # The signature word field.
+        ('rom_size', (0x04, 4, int)),  # The ROM size field.
+        ('ram_size', (0x08, 4, int)),  # The size of working RAM field.
+        ('settings_offset', (0x0c, 4, int)),  # Settings parameters field.
+        ('flags', (0x10, 4, int)),
+        ('applet_id', (0x14, 2, int)),
+        ('header_version', (0x16, 1, int)),  # ByteHeader version code field.
+        ('file_count', (0x17, 1, int)),
+        ('name', (0x18, 36, str)),  # Display name.
+        ('version_major', (0x3c, 1, int)),  # Major version number field.
         ('version_minor', (0x3d, 1, int)),  # Minor version number field.
         ('version_revision', (0x3e, 1, int)),  # Revision code (ASCII) field.
         ('language_id', (0x3f, 1, int)),  # Localised language field.
@@ -43,8 +44,8 @@ APPLET_SETTINGS_RANGE32_FORMAT = {
     'size': 12,
     'fields': {
         'default': (0x00, 4, int),
-        'min': (0x00, 4, int),
-        'max': (0x00, 4, int)
+        'min': (0x04, 4, int),
+        'max': (0x08, 4, int)
     }
 }
 
@@ -127,7 +128,6 @@ class AppletSettings:
                 self.descriptions[item.ident] = item
             else:
                 self.settings[item.ident] = item
-            self.settings[item.ident] = item
 
     def to_dict(self):
         result = []
@@ -138,16 +138,24 @@ class AppletSettings:
             return '%s (%s)' % (text, ident)
 
         for item in self.settings.values():
-            label = self.labels.get(item.ident)
             description = self.descriptions.get(item.ident)
-            item_dict = {'label': label_for_ident(item.ident), 'type': item.type, 'value': item.data}
+            item_dict = {'label': label_for_ident(item.ident), 'ident': item.ident, 'type': item.type,
+                         'value': item.data}
             if description:
                 item_dict['description'] = description.data
             if item.type == AppletSettingsType.OPTION:
-                item_dict['value'] = list(map(label_for_ident, item.data))
+                item_dict['value'] = {
+                    'selected': label_for_ident(item.data[0]),
+                    'options': list(map(label_for_ident, item.data[1:]))
+                }
             result.append(item_dict)
         result = sorted(result, key=lambda item: item.get('label'))
         return result
+
+    def merge_settings(self, settings):
+        self.labels.update(settings.labels)
+        self.descriptions.update(settings.descriptions)
+        self.settings.update(settings.settings)
 
 
 class AppletSettingsItem:
@@ -163,6 +171,7 @@ class AppletSettingsItem:
         write_data = None
 
         if self.type in [AppletSettingsType.LABEL, AppletSettingsType.DESCRIPTION]:
+            # Can we update the labels???
             data_len = len(self.data) + 1
             write_data = lambda: string_to_buf(buf, 6, len(self.data), self.data)
         elif self.type == AppletSettingsType.OPTION:
@@ -175,7 +184,7 @@ class AppletSettingsItem:
             write_data = write_option
         elif self.type == AppletSettingsType.RANGE_32:
             data_len = APPLET_SETTINGS_RANGE32_FORMAT['size']
-            write_data = data_to_buf(APPLET_SETTINGS_RANGE32_FORMAT, buf[6:], self.data)
+            write_data = lambda: data_to_buf(APPLET_SETTINGS_RANGE32_FORMAT, buf, self.data, buf_offset=6)
         elif self.type in [AppletSettingsType.FILE_PASSWORD, AppletSettingsType.PASSWORD_6]:
             data_len = 6
             write_data = lambda: string_to_buf(buf, 6, 6, self.data)
@@ -212,6 +221,31 @@ class AppletSettingsItem:
             data = int_from_buf(buf, 6, 4)
         del item_obj['length']
         return AppletSettingsItem(**item_obj, **{'data': data})
+
+    def change_setting(self, values: List[str]):
+        if self.type == AppletSettingsType.RANGE_32:
+            assert len(values) == 3
+            self.data = {
+                'default': int(values[0]),
+                'min': int(values[1]),
+                'max': int(values[2])
+            }
+        if self.type == AppletSettingsType.OPTION:
+            assert len(values) == 1
+            ident = int(values[0])
+            if ident not in self.data:
+                raise AlphatoolsError('Identifier must be a member of %s' % self.data[1:])
+            self.data[0] = ident
+        elif self.type in [AppletSettingsType.PASSWORD_6, AppletSettingsType.FILE_PASSWORD]:
+            assert len(values) == 1
+            password = values[0]
+            assert len(password) >= 6
+            self.data = password
+        elif self.type == AppletSettingsType.APPLET_ID:
+            assert len(values) == 1
+            applet_id = int(values[0])
+            # The caller must check that the applet exists
+            self.data = applet_id
 
     @staticmethod
     def list_from_raw(buf):
@@ -307,7 +341,7 @@ def get_settings(device, applet_id, flags):
 def set_settings(device, applet_id, settings):
     settings_buf = settings.to_raw()
     checksum = calculate_data_checksum(settings_buf)
-
+    device.dialogue_start()
     logger.info('Requesting to write settings for applet_id=%s', applet_id)
     message = Message(MessageConst.REQUEST_SET_SETTINGS,
                       [(len(settings_buf), 1, 4), (checksum, 5, 2)])
@@ -318,3 +352,4 @@ def set_settings(device, applet_id, settings):
 
     message = Message(MessageConst.REQUEST_SET_APPLET, [(0, 1, 4), (applet_id, 5, 2)])
     send_message(device, message, MessageConst.RESPONSE_SET_APPLET)
+    device.dialogue_end()
