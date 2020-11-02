@@ -1,46 +1,83 @@
-# Alphatools
+# AlphaTools
 
-This project aims to create cross-platform command-line tools that replace Neo Manager.
+Command-line tools for AlphaSmart NEO.
 
-## Running Neo Manager in VirtualBox
-Install VirtualBox
-Create a virtual machine. I used a free Windows XP Mode virtual disk from the Microsoft website. Its archive has a VHD disk.
+This project aims to provide common functionality like file management, as well as 
+access to the low-level system details.
+The device driver has been ported from [AlphaSync](https://github.com/tSoniq/alphasync/).
 
-Install VirtualBox Extension Pack for better USB support. Its version must exactly match the version of VirtualBox.
-Install guest additions into the VM.
+## Commands
 
-In the virtual machine settings:
-* Enable USB 2.0 EHCI
-* Set two USB filters, for the keyboard and comms parts of the device:
-vendorId=081e productId=bd01
-vendorId=081e productId=bd04
+Read file by index.
 
-Install Neo Manager. If it fails with digital certificate error, update the OS or install the certificate manually.
-Plug in AlphaSmart and wait a few minutes till the operating system recognizes it and offers to install a driver.
+```bash
+> alphatools files read 1
+Once upon a time...
+````
 
-## Python development
+Copy all files to the directory, preserving their names.
+```bash
+> alphatools files read-all --path archives/
+> ls archives
+'File 1.txt'    'File 3.txt'    intro.txt
+```
 
-## USB captured data
-There is no open-source implementation of installing applets. So this is the focus of the USB set under usb_pcap.
+Write file to Neo
+```bash
+> alphatools files write notes.txt 1
+```
 
-Captured with WireShark on Linux host, with NEO Manager 3.9.3 running on Windows XP virtual machine.
+Inspect applets and manage their settings
+```bash
+> alphatools applets list
+[
+  {
+    "name": "System",
+    "applet_id": 0,
+    "rom_size": 401408,
+    ...
+  },
+...
+```
 
-* [connection](usb_pcap/connection.pcapng) - Opening manager, idle for several minutes, closing manager.
-* [get_info](usb_pcap/get_info.pcapng) - "Get NEO Info" from the manager menu.
-* [install_applets_remove_unlisted](usb_pcap/install_applets_remove_unlisted.pcapng) - installing AlphaWord Plus 3.4 and Control Panel 1.07 with the checkmark for "Delete SmartApplets that are not in the Install List from all NEO devices"
-* [install_calculator302](usb_pcap/install_calculator302.pcapng) - install a single applet Calculator 3.02
-* [install_thesaurus](usb_pcap/install_thesaurus.pcapng) - Thesaurus Large USA 1.1. The manager backed up the applets, removed them and reinstalled again with thesaurus. It happened only for this applet. The delete checkmark was off.
-* [install_spellcheck_large_usa_103](usb_pcap/install_spellcheck_large_usa_103.pcapng) - SpellCheck Large USA 1.03
-* [send_file3_to_device](usb_pcap/send_file3_to_device.pcapng) - File starts with the line "this is file 3 text", ends with "456"
-* [send_file4_to_device](usb_pcap/send_file4_to_device.pcapng) - File starts with the line "this is file 4 text", ends with "456"
-* [view_file](usb_pcap/view_file.pcapng) - download a text file
-* [install_multiple_fonts](usb_pcap/install_multiple_fonts.pcapng) - The default fonts micro, medium, large, very large, extra large.
-* [install_neofont_atto11](usb_pcap/install_neofont_atto11.pcapng)
-* [install_neofont_bold6](usb_pcap/install_neofont_bold6.pcapng)
-* [install_neofont_femto9](usb_pcap/install_neofont_femto9.pcapng)
-* [install_neofont_small6](usb_pcap/install_neofont_small6.pcapng)
-* [install_neofont_tech6](usb_pcap/install_neofont_tech6.pcapng)
+```bash
+> alphatools applets get-settings 0
+[
+  {
+    "label": "Auto Repeat (16385)",
+    "ident": 16385,
+    "type": "OPTION",
+    "value": {
+      "selected": "On (4097)",
+      "options": [
+        "On (4097)",
+        "Off (4098)"
+      ]
+    }
+  },
+...
+```
+Update system applet settings. Set idle time to five minutes.
+```bash
+> alphatools --verbose applets set-settings 0 16388 5 4 59
+```
 
-Useful links
-https://www.linuxvoice.com/drive-it-yourself-usb-car-6/
-https://www.devalias.net/devalias/2018/05/13/usb-reverse-engineering-down-the-rabbit-hole/#adafruit
+
+
+## Installation
+
+Confirm that you have Python 3 on your machine. Install alphatools from the Python package repository with:
+`pip3 install alphatools`.
+
+## Troubleshooting
+
+### Access denied
+`usb.core.USBError: [Errno 13] Access denied (insufficient permissions)`  
+A simple way to fix it is to run the command with `sudo`. However, it is
+better to give granular udev permissions to alphatools. Add the following rule to 
+the udev rules, into, for example `/lib/udev/rules.d/50-alphasmart.rules`.
+```
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd01", MODE="660", GROUP="plugdev"
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd04", MODE="660", GROUP="plugdev"
+```
+Make sure that your user is a member of the `plugdev` group.
