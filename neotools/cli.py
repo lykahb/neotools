@@ -5,7 +5,7 @@ from functools import partial
 
 import click
 
-from alphatools import commands
+from neotools import commands
 
 logger = logging.getLogger(__name__)
 

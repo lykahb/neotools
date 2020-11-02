@@ -1,4 +1,4 @@
-from alphatools.cli import cli
+from neotools.cli import cli
 
 
 def main():

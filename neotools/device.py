@@ -5,9 +5,9 @@ from time import sleep
 import usb.core
 from usb import util
 
-from alphatools.applet import AppletIds
-from alphatools.message import Message, MessageConst, send_message, assert_success
-from alphatools.util import AlphatoolsError
+from neotools.applet import AppletIds
+from neotools.message import Message, MessageConst, send_message, assert_success
+from neotools.util import NeotoolsError
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,9 @@ class Device:
         logger.info('Searching for device')
         devices = list(usb.core.find(find_all=True, idVendor=VENDOR_ID))
         if len(devices) == 0:
-            raise AlphatoolsError('Device not found')
+            raise NeotoolsError('Device not found')
         elif len(devices) > 1:
-            raise AlphatoolsError('More than one device is connected')
+            raise NeotoolsError('More than one device is connected')
         return devices[0]
 
     def init(self):
@@ -74,7 +74,7 @@ class Device:
                 util.endpoint_direction(ep.bEndpointAddress) == direction
             eps = list(filter(predicate, endpoints))
             if len(eps) == 0:
-                raise AlphatoolsError('Cannot find endpoint with direction %s' % direction)
+                raise NeotoolsError('Cannot find endpoint with direction %s' % direction)
             return eps[0]
 
         self.in_endpoint = get_endpoint(util.ENDPOINT_IN)
@@ -153,7 +153,7 @@ class Device:
         self.write(command_request_switch)
         response = self.read(8)
         if response != command_response_switched:
-            raise AlphatoolsError('Failed to switch to applet %s' % applet_id)
+            raise NeotoolsError('Failed to switch to applet %s' % applet_id)
 
     def hello(self):
         """Ping the device for the ASM protocol version number. This will put the Neo in
@@ -172,11 +172,11 @@ class Device:
             self.reset()
             sleep(0.1)  # seconds
         if retries < 0:
-            raise AlphatoolsError("This device doesn't look like it wants to talk to us - bailing out.")
+            raise NeotoolsError("This device doesn't look like it wants to talk to us - bailing out.")
 
         version = int.from_bytes(buf[0:2], byteorder='big')
         if version < PROTOCOL_VERSION:
-            raise AlphatoolsError('ASM protocol version not supported: %s' % version)
+            raise NeotoolsError('ASM protocol version not supported: %s' % version)
 
 
 def get_system_memory(device):

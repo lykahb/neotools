@@ -3,11 +3,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from alphatools import file
-from alphatools.applet import AppletIds, read_applets, get_settings, AppletSettingsType, set_settings, AppletSettings
-from alphatools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID
-from alphatools.text_file import export_text_from_neo, import_text_to_neo
-from alphatools.util import AlphatoolsError
+from neotools import file
+from neotools.applet import AppletIds, read_applets, get_settings, AppletSettingsType, set_settings, AppletSettings
+from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID
+from neotools.text_file import export_text_from_neo, import_text_to_neo
+from neotools.util import NeotoolsError
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def command_decorator(f):
     def new_func(*args, **kwargs):
         try:
             result = f(*args, **kwargs)
-        except AlphatoolsError as e:
+        except NeotoolsError as e:
             if logger.level == logging.DEBUG:
                 logger.exception(e)
             else:
@@ -151,11 +151,11 @@ def applet_write_settings(applet_id, ident, values):
             if item:
                 break
         if item is None:
-            raise AlphatoolsError('Settings item with id=%s not found' % ident)
+            raise NeotoolsError('Settings item with id=%s not found' % ident)
         if item.type == AppletSettingsType.APPLET_ID:
             applets = read_applets(device)
             if not any(item.data == applet.id for applet in applets):
-                raise AlphatoolsError('Applet with id=%s not found' % item.data)
+                raise NeotoolsError('Applet with id=%s not found' % item.data)
         item.change_setting(values)
         set_settings(device, applet_id, item)
 

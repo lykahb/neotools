@@ -1,7 +1,7 @@
 from hypothesis import given, example, settings
 from hypothesis.strategies import text
 
-from alphatools.text_file import import_text_to_neo, export_text_from_neo
+from neotools.text_file import import_text_to_neo, export_text_from_neo
 
 
 def test_newlines():

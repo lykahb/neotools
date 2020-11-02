@@ -3,10 +3,10 @@ from collections import OrderedDict
 
 from usb import util
 
-from alphatools.applet import get_applet_resource_usage
-from alphatools.device import get_system_memory
-from alphatools.message import Message, MessageConst, send_message, receive_message, assert_success
-from alphatools.util import calculate_data_checksum, AlphatoolsError, data_from_buf, \
+from neotools.applet import get_applet_resource_usage
+from neotools.device import get_system_memory
+from neotools.message import Message, MessageConst, send_message, receive_message, assert_success
+from neotools.util import calculate_data_checksum, NeotoolsError, data_from_buf, \
     data_to_buf
 
 logger = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ def read_extended_data(device, size):
             result.extend(buf)
             remaining = remaining - len(buf)
         else:
-            raise AlphatoolsError('Unexpected response %s' % response)
+            raise NeotoolsError('Unexpected response %s' % response)
 
     return result.tobytes()
 
@@ -257,7 +257,7 @@ def create_file(device, filename, password, data, applet_id):
     size = len(data)
     if size + 1024 > system_memory['free_ram']:
         # REVIEW: arbitrarily choosing to keep at least 1k unused on the device
-        raise AlphatoolsError('The device does not have enough RAM')
+        raise NeotoolsError('The device does not have enough RAM')
 
     device.dialogue_start()
 

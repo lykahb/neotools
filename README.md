@@ -1,4 +1,4 @@
-# AlphaTools
+# NeoTools
 
 Command-line tools for AlphaSmart NEO.
 
@@ -11,25 +11,25 @@ The device driver has been ported from [AlphaSync](https://github.com/tSoniq/alp
 Read file by index.
 
 ```bash
-> alphatools files read 1
+> neotools files read 1
 Once upon a time...
 ````
 
 Copy all files to the directory, preserving their names.
 ```bash
-> alphatools files read-all --path archives/
+> neotools files read-all --path archives/
 > ls archives
 'File 1.txt'    'File 3.txt'    intro.txt
 ```
 
 Write file to Neo
 ```bash
-> alphatools files write notes.txt 1
+> neotools files write notes.txt 1
 ```
 
 Inspect applets and manage their settings
 ```bash
-> alphatools applets list
+> neotools applets list
 [
   {
     "name": "System",
@@ -41,7 +41,7 @@ Inspect applets and manage their settings
 ```
 
 ```bash
-> alphatools applets get-settings 0
+> neotools applets get-settings 0
 [
   {
     "label": "Auto Repeat (16385)",
@@ -59,22 +59,22 @@ Inspect applets and manage their settings
 ```
 Update system applet settings. Set idle time to five minutes.
 ```bash
-> alphatools --verbose applets set-settings 0 16388 5 4 59
+> neotools --verbose applets set-settings 0 16388 5 4 59
 ```
 
 
 
 ## Installation
 
-Confirm that you have Python 3 on your machine. Install alphatools from the Python package repository with:
-`pip3 install alphatools`.
+Confirm that you have Python 3 on your machine. Install neotools from the Python package repository with:
+`pip3 install neotools`.
 
 ## Troubleshooting
 
 ### Access denied
 `usb.core.USBError: [Errno 13] Access denied (insufficient permissions)`  
 A simple way to fix it is to run the command with `sudo`. However, it is
-better to give granular udev permissions to alphatools. Add the following rule to 
+better to give granular udev permissions to neotools. Add the following rule to 
 the udev rules, into, for example `/lib/udev/rules.d/50-alphasmart.rules`.
 ```
 ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd01", MODE="660", GROUP="plugdev"

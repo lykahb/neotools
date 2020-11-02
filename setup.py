@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='alphatools',
+    name='neotools',
     description='Python USB access module',
     author='Boris Lykah',
 )

@@ -3,8 +3,8 @@ from collections import OrderedDict
 from enum import Enum
 from typing import List
 
-from alphatools.message import Message, MessageConst, send_message, receive_message
-from alphatools.util import calculate_data_checksum, AlphatoolsError, data_from_buf, data_to_buf, int_from_buf, \
+from neotools.message import Message, MessageConst, send_message, receive_message
+from neotools.util import calculate_data_checksum, NeotoolsError, data_from_buf, data_to_buf, int_from_buf, \
     int_to_buf, string_to_buf, string_from_buf
 
 logger = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ class Applet:
     def from_raw_header(buf):
         applet = data_from_buf(APPLET_HEADER_FORMAT, buf)
         if applet['signature'] != SIGNATURE:
-            raise AlphatoolsError('Invalid applet signature %s', applet['signature'])
+            raise NeotoolsError('Invalid applet signature %s', applet['signature'])
 
         return applet
 
@@ -234,7 +234,7 @@ class AppletSettingsItem:
             assert len(values) == 1
             ident = int(values[0])
             if ident not in self.data:
-                raise AlphatoolsError('Identifier must be a member of %s' % self.data[1:])
+                raise NeotoolsError('Identifier must be a member of %s' % self.data[1:])
             self.data[0] = ident
         elif self.type in [AppletSettingsType.PASSWORD_6, AppletSettingsType.FILE_PASSWORD]:
             assert len(values) == 1
@@ -296,7 +296,7 @@ def raw_read_applet_headers(device, index):
     size = response.argument(1, 4)
     expected_checksum = response.argument(5, 2)
     if size > LIST_APPLETS_REQUEST_COUNT * header_size:
-        raise AlphatoolsError('rawReadAppletHeaders: reply will return too much data!')
+        raise NeotoolsError('rawReadAppletHeaders: reply will return too much data!')
 
     if size == 0:
         return []
@@ -307,7 +307,7 @@ def raw_read_applet_headers(device, index):
             'rawReadAppletHeaders: read returned a partial header (expected header size %s, bytes read %s',
             header_size, len(buf))
     if calculate_data_checksum(buf) != expected_checksum:
-        raise AlphatoolsError('rawReadAppletHeaders: data checksum error')
+        raise NeotoolsError('rawReadAppletHeaders: data checksum error')
     return buf
 
 

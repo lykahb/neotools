@@ -32,7 +32,7 @@ def calculate_data_checksum(buf):
 
 def data_from_buf(buf_format, buf):
     if buf_format['size'] is not None and buf_format['size'] != len(buf):
-        raise AlphatoolsError(
+        raise NeotoolsError(
             'Expected buffer of size %s, received %s' %
             (buf_format['size'], len(buf)))
     converters = {
@@ -47,7 +47,7 @@ def data_from_buf(buf_format, buf):
 
 def data_to_buf(buf_format, buf, value, buf_offset=0):
     if buf_format['size'] is not None and buf_format['size'] + buf_offset < len(buf):
-        raise AlphatoolsError(
+        raise NeotoolsError(
             'Buffer too small, required size=%s, received=%s, offset=%s' %
             (buf_format['size'], len(buf), buf_offset))
     converters = {
@@ -59,5 +59,5 @@ def data_to_buf(buf_format, buf, value, buf_offset=0):
             converters[typ](buf, buf_offset + offset, width, value[k])
 
 
-class AlphatoolsError(RuntimeError):
+class NeotoolsError(RuntimeError):
     pass
