@@ -10,7 +10,7 @@ from neotools import commands
 logger = logging.getLogger(__name__)
 
 file_index_arg = partial(click.argument, 'file_index',
-                         type=click.IntRange(1, 8))
+                         type=click.IntRange(1))
 applet_id_option = partial(click.option, '--applet-id', '-a', type=int)
 format_option = partial(
     click.option, '--format', '-f', 'format_',

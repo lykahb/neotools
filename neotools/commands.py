@@ -55,14 +55,14 @@ def read_all_files(applet_id, path, name_format):
         applet_id = AppletIds.ALPHAWORD
     with Device.connect() as device:
         files = file.list_files(device, applet_id)
-        for file_attrs in files:
-            text = read_text(device, applet_id, file_attrs)
+        for file_index, file_attrs in enumerate(files, start=1):
+            text = read_text(device, applet_id, file_index, file_attrs)
             if len(text):
                 write_file_with_format(file_attrs, text, path, name_format)
 
 
-def read_text(device, applet_id, file_attrs):
-    text = file.read_file(device, applet_id, file_attrs, file_attrs.space)
+def read_text(device, applet_id, file_index, file_attrs):
+    text = file.read_file(device, applet_id, file_index, file_attrs)
     if applet_id == AppletIds.ALPHAWORD:
         text = export_text_from_neo(text)
     return text
@@ -71,7 +71,7 @@ def read_text(device, applet_id, file_attrs):
 def write_file_with_format(file_attrs, text, path, name_format):
     name_format = name_format or '{name}.txt'
     date = datetime.now()
-    data = {'name': file_attrs.name, 'index': file_attrs.space, 'date': date}
+    data = {'name': file_attrs.name, 'space': file_attrs.space, 'date': date}
     file_name = name_format.format(**data)
     file_path = Path(path) / file_name
     with open(file_path, mode='w') as f:
@@ -90,7 +90,7 @@ def read_file(applet_id, file_index, path, name_format):
             print('Text file at index %s does not exist' % file_index)
             sys.exit(1)
 
-        text = read_text(device, applet_id, file_attrs)
+        text = read_text(device, applet_id, file_index, file_attrs)
         if path:
             write_file_with_format(file_attrs, text, path, name_format)
         else:

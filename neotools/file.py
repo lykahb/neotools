@@ -64,7 +64,7 @@ class FileAttributes:
     def __init__(self, name, space, password, min_size, alloc_size, flags):
         self.name = name
         # The file space number. Zero => unbound, 1 to 8 => file spaces 1 to 8 respectively.
-        self.space = space  # Consider renaming to index
+        self.space = space
         self.password = password
         self.min_size = min_size
         self.alloc_size = alloc_size
@@ -90,9 +90,9 @@ class FileAttributes:
         return buf
 
 
-def read_file(device, applet_id, file_attrs, index):
+def read_file(device, applet_id, file_index, file_attrs):
     device.dialogue_start()
-    result = raw_read_file(device, file_attrs.alloc_size, applet_id, index, True)
+    result = raw_read_file(device, file_attrs.alloc_size, applet_id, file_index, True)
     device.dialogue_end()
     return result
 
@@ -169,7 +169,6 @@ def list_files(device, applet_id):
         files.append(attrs)
         logger.debug('file listed file_index=%s attrs=%s', file_index, attrs)
         file_index = file_index + 1
-    files = sorted(files, key=lambda f: f.space)
     return files
 
 
