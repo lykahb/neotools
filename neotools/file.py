@@ -57,11 +57,12 @@ def get_file_attributes(device, applet_id, index):
     buf = device.read(FILE_ATTRIBUTES_FORMAT['size'])
     assert checksum == calculate_data_checksum(buf)
     device.dialogue_end()
-    return FileAttributes.from_raw(buf)
+    return FileAttributes.from_raw(index, buf)
 
 
 class FileAttributes:
-    def __init__(self, name, space, password, min_size, alloc_size, flags):
+    def __init__(self, file_index, name, space, password, min_size, alloc_size, flags):
+        self.file_index = file_index
         self.name = name
         # The file space number. Zero => unbound, 1 to 8 => file spaces 1 to 8 respectively.
         self.space = space
@@ -74,10 +75,11 @@ class FileAttributes:
         return str(self.__dict__)
 
     @staticmethod
-    def from_raw(buf: bytes):
+    def from_raw(file_index: int, buf: bytes):
         attrs = data_from_buf(FILE_ATTRIBUTES_FORMAT, buf)
         space = FileConst.FILE_SPACE_CODES.index(attrs['space'])
         attrs['space'] = space
+        attrs['file_index'] = file_index
         del attrs['unknown1']
         del attrs['unknown2']
         return FileAttributes(**attrs)
@@ -262,7 +264,7 @@ def create_file(device, filename, password, data, applet_id):
 
     file_index = usage['file_count'] + 1
     # The space is unbound, it is not index
-    attrs = FileAttributes(filename, 0, password, size, size, 0)
+    attrs = FileAttributes(file_index, filename, 0, password, size, size, 0)
     raw_set_file_attributes(device, attrs, applet_id, file_index)
 
     # Sending this message appears to bind the attributes to a new file -

@@ -16,6 +16,7 @@ def raw_attributes():
 @pytest.fixture
 def file_attributes():
     return FileAttributes(
+        file_index=5,
         name="art",
         space=5,
         password="write",
@@ -26,7 +27,9 @@ def file_attributes():
 
 
 def test_get_file_attributes_from_raw(file_attributes, raw_attributes):
-    for attr in [file_attributes, FileAttributes.from_raw(raw_attributes)]:
+    file_index = 5
+    for attr in [file_attributes, FileAttributes.from_raw(file_index, raw_attributes)]:
+        assert attr.file_index == file_index
         assert attr.space == 5
         assert attr.name == "art"
         assert attr.password == "write"
