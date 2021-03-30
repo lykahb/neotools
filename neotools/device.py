@@ -28,12 +28,11 @@ class Device:
 
     @staticmethod
     @contextmanager
-    def connect(init=True, dispose=True):
+    def connect(flip_to_comms=True, dispose=True):
         device = None
         try:
             device = Device(Device.find())
-            if init:
-                device.init()
+            device.init(flip_to_comms)
             yield device
         finally:
             if device and dispose:
@@ -49,9 +48,9 @@ class Device:
             raise NeotoolsError('More than one device is connected')
         return devices[0]
 
-    def init(self):
+    def init(self, flip_to_comms=True):
         self.is_kernel_driver_detached = False
-        if self.dev.idProduct == HID_PRODUCT_ID:
+        if flip_to_comms and self.dev.idProduct == HID_PRODUCT_ID:
             if self.dev.is_kernel_driver_active(0):
                 logger.debug('Detaching kernel driver')
                 self.dev.detach_kernel_driver(0)
@@ -64,21 +63,22 @@ class Device:
                 sleep(0.1)
                 self.dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
 
-        cfg = self.dev[0]
-        intf = cfg[(0, 0)]
-        endpoints = intf.endpoints()
+        if self.dev.idProduct == COM_PRODUCT_ID:
+            cfg = self.dev[0]
+            intf = cfg[(0, 0)]
+            endpoints = intf.endpoints()
 
-        def get_endpoint(direction):
-            predicate = lambda ep: \
-                util.endpoint_type(ep.bmAttributes) == util.ENDPOINT_TYPE_BULK and \
-                util.endpoint_direction(ep.bEndpointAddress) == direction
-            eps = list(filter(predicate, endpoints))
-            if len(eps) == 0:
-                raise NeotoolsError('Cannot find endpoint with direction %s' % direction)
-            return eps[0]
+            def get_endpoint(direction):
+                predicate = lambda ep: \
+                    util.endpoint_type(ep.bmAttributes) == util.ENDPOINT_TYPE_BULK and \
+                    util.endpoint_direction(ep.bEndpointAddress) == direction
+                eps = list(filter(predicate, endpoints))
+                if len(eps) == 0:
+                    raise NeotoolsError('Cannot find endpoint with direction %s' % direction)
+                return eps[0]
 
-        self.in_endpoint = get_endpoint(util.ENDPOINT_IN)
-        self.out_endpoint = get_endpoint(util.ENDPOINT_OUT)
+            self.in_endpoint = get_endpoint(util.ENDPOINT_IN)
+            self.out_endpoint = get_endpoint(util.ENDPOINT_OUT)
 
     def dispose(self):
         if self.original_product == HID_PRODUCT_ID and self.dev.idProduct == COM_PRODUCT_ID:

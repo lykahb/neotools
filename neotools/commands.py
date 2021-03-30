@@ -30,20 +30,20 @@ def command_decorator(f):
 
 @command_decorator
 def flip_to_communicator():
-    with Device.connect(init=True, dispose=False):
+    with Device.connect(flip_to_comms=True, dispose=False):
         pass
 
 
 @command_decorator
 def flip_to_keyboard():
-    with Device.connect(init=False) as device:
+    with Device.connect(flip_to_comms=False) as device:
         if device.original_product == COM_PRODUCT_ID:
             device.flip_to_keyboard_mode()
 
 
 @command_decorator
 def get_mode():
-    with Device.connect(init=False) as device:
+    with Device.connect(flip_to_comms=False) as device:
         mapping = {HID_PRODUCT_ID: 'keyboard', COM_PRODUCT_ID: 'comms'}
         mode = mapping.get(device.original_product, 'unknown')
         print(mode)
