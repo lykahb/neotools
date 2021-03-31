@@ -273,3 +273,25 @@ def create_file(device, filename, password, data, applet_id):
     response = send_message(device, message, MessageConst.RESPONSE_COMMIT)
     raw_write_file(device, data, applet_id, file_index, True)
     device.dialogue_end()
+
+
+def get_file_by_name_or_space(device, applet_id, file_name_or_space):
+    """Return FileAttributes for a file.
+
+If space (the string "1" to "8") is passed, will return that space.
+Otherwise the file with a given name is returned, or None if it cannot
+be found.
+
+    """
+    files = list_files(device, applet_id)
+    if file_name_or_space.isdigit():
+        space = int(file_name_or_space)
+        if space >= 1 and space <= 8:
+            for f in files:
+                if f.space == space:
+                    return f
+    for f in files:
+        if f.name == file_name_or_space:
+            return f
+
+
