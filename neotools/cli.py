@@ -9,8 +9,7 @@ from neotools import commands
 
 logger = logging.getLogger(__name__)
 
-file_index_arg = partial(click.argument, 'file_index',
-                         type=click.IntRange(1, 8))
+file_name_or_space_arg = partial(click.argument, 'file_name_or_space')
 applet_id_option = partial(click.option, '--applet-id', '-a', type=int)
 format_option = partial(
     click.option, '--format', '-f', 'format_',
@@ -112,11 +111,11 @@ def list_all_files(applet_id):
 
 @files.command('read')
 @applet_id_option()
-@file_index_arg()
+@file_name_or_space_arg()
 @click.option('--path', '-p', type=click.Path())
 @format_option()
-def read_file(file_index, applet_id, path, format_):
-    commands.read_file(applet_id, file_index, path, format_)
+def read_file(file_name_or_space, applet_id, path, format_):
+    commands.read_file(applet_id, file_name_or_space, path, format_)
 
 
 @files.command('read-all')
@@ -129,17 +128,17 @@ def read_all_files(applet_id, path, format_):
 
 @files.command('write')
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
-@file_index_arg()
-def write_file(path, file_index):
+@file_name_or_space_arg()
+def write_file(path, file_name_or_space):
     contents = open(path).read()
-    commands.write_file(file_index, contents)
+    commands.write_file(file_name_or_space, contents)
 
 
 @files.command('clear')
 @applet_id_option()
-@file_index_arg()
-def clear(applet_id, file_index):
-    commands.clear_file(applet_id, file_index)
+@file_name_or_space_arg()
+def clear(applet_id, file_name_or_space):
+    commands.clear_file(applet_id, file_name_or_space)
 
 
 def json_default(val):

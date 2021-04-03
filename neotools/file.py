@@ -57,14 +57,15 @@ def get_file_attributes(device, applet_id, index):
     buf = device.read(FILE_ATTRIBUTES_FORMAT['size'])
     assert checksum == calculate_data_checksum(buf)
     device.dialogue_end()
-    return FileAttributes.from_raw(buf)
+    return FileAttributes.from_raw(index, buf)
 
 
 class FileAttributes:
-    def __init__(self, name, space, password, min_size, alloc_size, flags):
+    def __init__(self, file_index, name, space, password, min_size, alloc_size, flags):
+        self.file_index = file_index
         self.name = name
         # The file space number. Zero => unbound, 1 to 8 => file spaces 1 to 8 respectively.
-        self.space = space  # Consider renaming to index
+        self.space = space
         self.password = password
         self.min_size = min_size
         self.alloc_size = alloc_size
@@ -74,10 +75,11 @@ class FileAttributes:
         return str(self.__dict__)
 
     @staticmethod
-    def from_raw(buf: bytes):
+    def from_raw(file_index: int, buf: bytes):
         attrs = data_from_buf(FILE_ATTRIBUTES_FORMAT, buf)
         space = FileConst.FILE_SPACE_CODES.index(attrs['space'])
         attrs['space'] = space
+        attrs['file_index'] = file_index
         del attrs['unknown1']
         del attrs['unknown2']
         return FileAttributes(**attrs)
@@ -90,9 +92,9 @@ class FileAttributes:
         return buf
 
 
-def read_file(device, applet_id, file_attrs, index):
+def read_file(device, applet_id, file_attrs):
     device.dialogue_start()
-    result = raw_read_file(device, file_attrs.alloc_size, applet_id, index, True)
+    result = raw_read_file(device, applet_id, file_attrs, True)
     device.dialogue_end()
     return result
 
@@ -145,13 +147,15 @@ def read_extended_data(device, size):
     return result.tobytes()
 
 
-def raw_read_file(device, size, applet_id, index, raw):
+def raw_read_file(device, applet_id, file_attrs, raw):
     """
     Transfer sequence:
       OUT:    0x12|0x1c   ASMESSAGE_REQUEST_READ_FILE | ASMESSAGE_REQUEST_READ_RAW_FILE
       IN:     0x53        ASMESSAGE_RESPONSE_READ_FILE
       [block read sequence]
     """
+    size = file_attrs.alloc_size
+    index = file_attrs.file_index
     logger.info('Requesting to read a file at applet_id=%s, file_index=%s', applet_id, index)
     command = MessageConst.REQUEST_READ_RAW_FILE if raw else MessageConst.REQUEST_READ_FILE
     message = Message(command, [(size, 1, 3), (index, 4, 1), (applet_id, 5, 2)])
@@ -169,7 +173,6 @@ def list_files(device, applet_id):
         files.append(attrs)
         logger.debug('file listed file_index=%s attrs=%s', file_index, attrs)
         file_index = file_index + 1
-    files = sorted(files, key=lambda f: f.space)
     return files
 
 
@@ -263,7 +266,7 @@ def create_file(device, filename, password, data, applet_id):
 
     file_index = usage['file_count'] + 1
     # The space is unbound, it is not index
-    attrs = FileAttributes(filename, 0, password, size, size, 0)
+    attrs = FileAttributes(file_index, filename, 0, password, size, size, 0)
     raw_set_file_attributes(device, attrs, applet_id, file_index)
 
     # Sending this message appears to bind the attributes to a new file -
@@ -272,3 +275,25 @@ def create_file(device, filename, password, data, applet_id):
     response = send_message(device, message, MessageConst.RESPONSE_COMMIT)
     raw_write_file(device, data, applet_id, file_index, True)
     device.dialogue_end()
+
+
+def get_file_by_name_or_space(device, applet_id, file_name_or_space):
+    """Return FileAttributes for a file.
+
+If space (the string "1" to "8") is passed, will return that space.
+Otherwise the file with a given name is returned, or None if it cannot
+be found.
+
+    """
+    files = list_files(device, applet_id)
+    if file_name_or_space.isdigit():
+        space = int(file_name_or_space)
+        if space >= 1 and space <= 8:
+            for f in files:
+                if f.space == space:
+                    return f
+    for f in files:
+        if f.name == file_name_or_space:
+            return f
+
+
