@@ -104,8 +104,9 @@ def applet_set_settings(applet_id, ident, value):
 
 @files.command("list")
 @applet_id_option()
-def list_all_files(applet_id):
-    files = commands.list_files(applet_id)
+@click.option('--verbose', '-v', default=False, is_flag=True, help='All file attributes')
+def list_all_files(applet_id, verbose):
+    files = commands.list_files(applet_id, verbose)
     print(json.dumps(files, indent=2, default=json_default))
 
 

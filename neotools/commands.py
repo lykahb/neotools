@@ -87,8 +87,7 @@ def read_file(applet_id, file_name_or_space, path, name_format):
     with Device.connect() as device:
         file_attrs = file.get_file_by_name_or_space(device, applet_id, file_name_or_space)
         if file_attrs is None:
-            print('Text file with name or space %s does not exist' % file_name_or_space)
-            sys.exit(1)
+            raise NeotoolsError('Text file with name or space %s does not exist' % file_name_or_space)
 
         text = read_text(device, applet_id, file_attrs)
         if path:
@@ -104,11 +103,14 @@ def list_applets():
 
 
 @command_decorator
-def list_files(applet_id):
+def list_files(applet_id, verbose):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
     with Device.connect() as device:
-        return file.list_files(device, applet_id)
+        files = file.list_files(device, applet_id)
+        if not verbose:
+            files = [{'name': f.name, 'space': f.space, 'alloc_size': f.alloc_size} for f in files]
+        return files
 
 
 @command_decorator
@@ -117,7 +119,10 @@ def write_file(file_name_or_space, text):
         raw_bytes = import_text_to_neo(text)
         device.dialogue_start()
         file_attrs = file.get_file_by_name_or_space(device, AppletIds.ALPHAWORD, file_name_or_space)
-        file.raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_attrs.file_index, True)
+        if file_attrs:
+            file.raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_attrs.file_index, True)
+        else:
+            file.create_file(device, file_name_or_space, 'write', text, AppletIds.ALPHAWORD)
         device.dialogue_end()
 
 
@@ -167,4 +172,7 @@ def clear_file(applet_id, file_name_or_space):
         applet_id = AppletIds.ALPHAWORD
     with Device.connect() as device:
         file_attrs = file.get_file_by_name_or_space(device, applet_id, file_name_or_space)
-        file.clear_file(device, applet_id, file_attrs.file_index)
+        if file_attrs:
+            file.clear_file(device, applet_id, file_attrs.file_index)
+        else:
+            raise NeotoolsError('File not found')

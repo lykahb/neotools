@@ -173,7 +173,7 @@ def list_files(device, applet_id):
         files.append(attrs)
         logger.debug('file listed file_index=%s attrs=%s', file_index, attrs)
         file_index = file_index + 1
-    return files
+    return sorted(files, key=lambda f: (f.space, f.name))
 
 
 def write_extended_data(device, buf):
@@ -288,7 +288,7 @@ be found.
     files = list_files(device, applet_id)
     if file_name_or_space.isdigit():
         space = int(file_name_or_space)
-        if space >= 1 and space <= 8:
+        if 1 <= space <= 8:
             for f in files:
                 if f.space == space:
                     return f
