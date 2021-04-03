@@ -55,14 +55,14 @@ def read_all_files(applet_id, path, name_format):
         applet_id = AppletIds.ALPHAWORD
     with Device.connect() as device:
         files = file.list_files(device, applet_id)
-        for file_index, file_attrs in enumerate(files, start=1):
-            text = read_text(device, applet_id, file_index, file_attrs)
+        for file_attrs in files:
+            text = read_text(device, applet_id, file_attrs)
             if len(text):
                 write_file_with_format(file_attrs, text, path, name_format)
 
 
-def read_text(device, applet_id, file_index, file_attrs):
-    text = file.read_file(device, applet_id, file_index, file_attrs)
+def read_text(device, applet_id, file_attrs):
+    text = file.read_file(device, applet_id, file_attrs)
     if applet_id == AppletIds.ALPHAWORD:
         text = export_text_from_neo(text)
     return text
@@ -80,17 +80,17 @@ def write_file_with_format(file_attrs, text, path, name_format):
 
 
 @command_decorator
-def read_file(applet_id, file_index, path, name_format):
+def read_file(applet_id, file_name_or_space, path, name_format):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
 
     with Device.connect() as device:
-        file_attrs = file.get_file_attributes(device, applet_id, file_index)
+        file_attrs = file.get_file_by_name_or_space(device, applet_id, file_name_or_space)
         if file_attrs is None:
-            print('Text file at index %s does not exist' % file_index)
+            print('Text file with name or space %s does not exist' % file_name_or_space)
             sys.exit(1)
 
-        text = read_text(device, applet_id, file_index, file_attrs)
+        text = read_text(device, applet_id, file_attrs)
         if path:
             write_file_with_format(file_attrs, text, path, name_format)
         else:
@@ -112,11 +112,12 @@ def list_files(applet_id):
 
 
 @command_decorator
-def write_file(file_index, text):
+def write_file(file_name_or_space, text):
     with Device.connect() as device:
         raw_bytes = import_text_to_neo(text)
         device.dialogue_start()
-        file.raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_index, True)
+        file_attrs = file.get_file_by_name_or_space(device, AppletIds.ALPHAWORD, file_name_or_space)
+        file.raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_attrs.file_index, True)
         device.dialogue_end()
 
 
@@ -161,8 +162,9 @@ def applet_write_settings(applet_id, ident, values):
 
 
 @command_decorator
-def clear_file(applet_id, file_index):
+def clear_file(applet_id, file_name_or_space):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
     with Device.connect() as device:
-        file.clear_file(device, applet_id, file_index)
+        file_attrs = file.get_file_by_name_or_space(device, applet_id, file_name_or_space)
+        file.clear_file(device, applet_id, file_attrs.file_index)

@@ -92,9 +92,9 @@ class FileAttributes:
         return buf
 
 
-def read_file(device, applet_id, file_index, file_attrs):
+def read_file(device, applet_id, file_attrs):
     device.dialogue_start()
-    result = raw_read_file(device, file_attrs.alloc_size, applet_id, file_index, True)
+    result = raw_read_file(device, applet_id, file_attrs, True)
     device.dialogue_end()
     return result
 
@@ -147,13 +147,15 @@ def read_extended_data(device, size):
     return result.tobytes()
 
 
-def raw_read_file(device, size, applet_id, index, raw):
+def raw_read_file(device, applet_id, file_attrs, raw):
     """
     Transfer sequence:
       OUT:    0x12|0x1c   ASMESSAGE_REQUEST_READ_FILE | ASMESSAGE_REQUEST_READ_RAW_FILE
       IN:     0x53        ASMESSAGE_RESPONSE_READ_FILE
       [block read sequence]
     """
+    size = file_attrs.alloc_size
+    index = file_attrs.file_index
     logger.info('Requesting to read a file at applet_id=%s, file_index=%s', applet_id, index)
     command = MessageConst.REQUEST_READ_RAW_FILE if raw else MessageConst.REQUEST_READ_FILE
     message = Message(command, [(size, 1, 3), (index, 4, 1), (applet_id, 5, 2)])
