@@ -20,6 +20,7 @@ format_option = partial(
 
 @click.group()
 @click.option('--verbose', '-v', default=False, is_flag=True)
+@click.version_option()
 @click.pass_context
 def cli(ctx, verbose):
     """

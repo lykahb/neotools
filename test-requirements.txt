@@ -1,2 +1,0 @@
-hypothesis>5
-pytest

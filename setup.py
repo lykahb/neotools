@@ -1,7 +1,6 @@
-from setuptools import setup
+#!/usr/bin/env python
 
-setup(
-    name='neotools',
-    description='Command-line tools for AlphaSmart NEO',
-    author='Boris Lykah',
-)
+import setuptools
+
+if __name__ == "__main__":
+    setuptools.setup()
