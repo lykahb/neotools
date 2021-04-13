@@ -15,6 +15,13 @@ Read file by index.
 Once upon a time...
 ````
 
+Read file by name. Enter the name as it appears on your Neo, without extension.
+
+```bash
+> neotools files read intro
+Introduction: ...
+````
+
 Copy all files to the directory, preserving their names.
 ```bash
 > neotools files read-all --path archives/
@@ -22,9 +29,10 @@ Copy all files to the directory, preserving their names.
 'File 1.txt'    'File 3.txt'    intro.txt
 ```
 
-Write file to Neo
+Write file to Neo. It can write both by index and file name.
 ```bash
 > neotools files write notes.txt 1
+> neotools files write intro.txt intro
 ```
 
 Inspect applets and manage their settings
