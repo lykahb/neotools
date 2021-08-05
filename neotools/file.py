@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 from usb import util
 
-from neotools.applet import get_applet_resource_usage
-from neotools.device import get_system_memory
+from neotools.applet.applet import get_applet_resource_usage
+from neotools.device import get_available_space
 from neotools.message import Message, MessageConst, send_message, receive_message, assert_success
 from neotools.util import calculate_data_checksum, NeotoolsError, data_from_buf, \
     data_to_buf
@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 FILE_ATTRIBUTES_FORMAT = {
     'size': 40,  # The number of bytes in the file attributes object.
     'fields': OrderedDict([
-        # Zero terminated file name string (this appears to be reported wrongly in some cases - bugs in some Neo firmware?)
+        # Zero terminated file name string
+        # (this appears to be reported wrongly in some cases - bugs in some Neo firmware?)
         ('name', (0x00, 15, str)),
         ('password', (0x10, 7, str)),  # Zero terminated file password string (max six characters?)
         ('min_size', (0x18, 4, int)),  # Minimum file allocation size
@@ -135,9 +136,9 @@ def read_extended_data(device, size):
         if response.command() == MessageConst.RESPONSE_BLOCK_READ_EMPTY:
             break
         if response.command() == MessageConst.RESPONSE_BLOCK_READ:
-            blocksize = response.argument(1, 4)
+            block_size = response.argument(1, 4)
             checksum = response.argument(5, 2)
-            buf = device.read(blocksize)
+            buf = device.read(block_size, timeout=(block_size * 10 + 600))
             assert calculate_data_checksum(buf) == checksum
             result.extend(buf)
             remaining = remaining - len(buf)
@@ -180,18 +181,18 @@ def write_extended_data(device, buf):
     remaining = len(buf)
     offset = 0
     while remaining > 0:
-        blocksize = min(1024, remaining)
-        block = buf[offset:offset + blocksize]
+        block_size = min(0x400, remaining)
+        block = buf[offset:offset + block_size]
         checksum = calculate_data_checksum(block)
 
-        message = Message(MessageConst.REQUEST_BLOCK_WRITE, [(blocksize, 1, 4), (checksum, 5, 2)])
-        response = send_message(device, message, MessageConst.RESPONSE_BLOCK_WRITE)
+        message = Message(MessageConst.REQUEST_BLOCK_WRITE, [(block_size, 1, 4), (checksum, 5, 2)])
+        send_message(device, message, MessageConst.RESPONSE_BLOCK_WRITE)
 
         device.write(block)
-        response = receive_message(device, MessageConst.RESPONSE_BLOCK_WRITE_DONE)
+        receive_message(device, MessageConst.RESPONSE_BLOCK_WRITE_DONE)
 
-        offset = offset + blocksize
-        remaining = remaining - blocksize
+        offset = offset + block_size
+        remaining = remaining - block_size
 
 
 def raw_set_file_attributes(device, attrs, applet_id, file_index):
@@ -253,12 +254,12 @@ def create_file(device, filename, password, data, applet_id):
     :return: The new FileAttributes.
     """
     usage = get_applet_resource_usage(device, applet_id)
-    system_memory = get_system_memory(device)
+    available_space = get_available_space(device)
     if isinstance(data, str):
         data = data.encode('utf-8')
 
     size = len(data)
-    if size + 1024 > system_memory['free_ram']:
+    if size + 1024 > available_space['free_ram']:
         # REVIEW: arbitrarily choosing to keep at least 1k unused on the device
         raise NeotoolsError('The device does not have enough RAM')
 
@@ -272,7 +273,7 @@ def create_file(device, filename, password, data, applet_id):
     # Sending this message appears to bind the attributes to a new file -
     # not sending it will still result in a new file, but the attributes will not be correct.
     message = Message(MessageConst.REQUEST_COMMIT, [(file_index, 4, 1), (applet_id, 5, 2)])
-    response = send_message(device, message, MessageConst.RESPONSE_COMMIT)
+    send_message(device, message, MessageConst.RESPONSE_COMMIT)
     raw_write_file(device, data, applet_id, file_index, True)
     device.dialogue_end()
 

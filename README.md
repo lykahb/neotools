@@ -35,6 +35,39 @@ Write file to Neo. It can write both by index and file name.
 > neotools files write intro.txt intro
 ```
 
+Get system information.
+```bash
+> neotools info
+{
+  "revision_major": 3,
+  "revision_minor": 17,
+  "name": "System 3 Neo      ",
+  "build_date": "Jul 11 2013, 09:44:53",
+  "free_rom": 1022224,
+  "free_ram": 351744
+}
+```
+
+Get the installed applet files from the device.
+```bash
+# Pass applet id and the path where to write the applet
+> neotools applets fetch 40967 ControlPanel.OS3KApp
+> neotools applets fetch 0 romdump.os3kos
+```
+
+Install applets.
+```bash
+> neotools applets install ~/projects/AlphaSmart\ Manager\ 2/SmartApplets/ControlPanel.OS3KApp
+Are you sure you want to install an applet? This is an experimental feature. [y/N]: y
+Installing applet Control Panel
+Initialization for writing the applet
+Initialized writing the applet
+Started writing applet content
+Completed writing applet content
+Finalizing writing the applet
+Finalized writing the applet
+```
+
 Inspect applets and manage their settings
 ```bash
 > neotools applets list
@@ -89,3 +122,9 @@ ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd
 ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd04", MODE="660", GROUP="plugdev"
 ```
 Make sure that your user is a member of the `plugdev` group.
+
+### Attempting to enter the Updater Mode
+The device displays this message and is not responsive.
+This happens when there are no applets installed. It is normal after running the
+Neotools command `applets clear`. To resolve the problem, install an applet,
+for example, AlphaWord or ControlPanel.

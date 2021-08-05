@@ -4,8 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 from neotools import file
-from neotools.applet import AppletIds, read_applets, get_settings, AppletSettingsType, set_settings, AppletSettings
-from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID
+from neotools.applet.applet import AppletIds, read_applet_list
+from neotools.applet.settings import get_settings, AppletSettingsType, set_settings, AppletSettings
+from neotools.applet import manager as applet_manager
+from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID, get_version, get_available_space
 from neotools.text_file import export_text_from_neo, import_text_to_neo
 from neotools.util import NeotoolsError
 
@@ -99,7 +101,38 @@ def read_file(applet_id, file_name_or_space, path, name_format):
 @command_decorator
 def list_applets():
     with Device.connect() as device:
-        return read_applets(device)
+        return read_applet_list(device)
+
+
+@command_decorator
+def remove_applets():
+    with Device.connect(dispose=False) as device:
+        # It reboots automatically after the applets are removed, so no need to dispose.
+        return applet_manager.remove_applets(device)
+
+
+@command_decorator
+def remove_applet(applet_id):
+    with Device.connect(dispose=False) as device:
+        # It reboots automatically after the applet is removed.
+        return applet_manager.remove_applet(device, applet_id)
+
+
+@command_decorator
+def install_applet(applet_path, force):
+    with Device.connect() as device:
+        f = open(applet_path, 'rb')
+        content = f.read()
+        f.close()
+        return applet_manager.install_applet(device, content, force)
+
+
+@command_decorator
+def fetch_applet(applet_id, path):
+    with Device.connect() as device:
+        content = applet_manager.fetch_applet(device, applet_id)
+        with open(path, 'wb') as f:
+            f.write(content)
 
 
 @command_decorator
@@ -157,11 +190,11 @@ def applet_write_settings(applet_id, ident, values):
             if item:
                 break
         if item is None:
-            raise NeotoolsError('Settings item with id=%s not found' % ident)
+            raise NeotoolsError(f'Settings item with id={ident} not found')
         if item.type == AppletSettingsType.APPLET_ID:
-            applets = read_applets(device)
-            if not any(item.data == applet.id for applet in applets):
-                raise NeotoolsError('Applet with id=%s not found' % item.data)
+            applets = read_applet_list(device)
+            if not any(item.data == applet['applet_id'] for applet in applets):
+                raise NeotoolsError(f'Applet with id={item.data} not found')
         item.change_setting(values)
         set_settings(device, applet_id, item)
 
@@ -176,3 +209,12 @@ def clear_file(applet_id, file_name_or_space):
             file.clear_file(device, applet_id, file_attrs.file_index)
         else:
             raise NeotoolsError('File not found')
+
+
+@command_decorator
+def system_info():
+    with Device.connect() as device:
+        version = get_version(device)
+        space = get_available_space(device)
+        del version['unknown']
+        return {**version, **space}
