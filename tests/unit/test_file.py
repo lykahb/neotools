@@ -2,7 +2,7 @@ from unittest import mock
 
 import neotools.commands
 import pytest
-from neotools.applet import AppletIds
+from neotools.applet.constants import AppletIds
 from neotools.device import Device
 from neotools.file import FileAttributes, FileConst
 

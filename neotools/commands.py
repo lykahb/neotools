@@ -4,8 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 from neotools import file
-from neotools.applet import AppletIds, read_applets, get_settings, AppletSettingsType, set_settings, AppletSettings
-from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID
+from neotools.applet.applet import AppletIds, read_applets
+from neotools.applet.settings import get_settings, AppletSettingsType, set_settings, AppletSettings
+from neotools.applet import manager as applet_manager
+from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID, get_version, get_available_space
 from neotools.text_file import export_text_from_neo, import_text_to_neo
 from neotools.util import NeotoolsError
 
@@ -103,6 +105,37 @@ def list_applets():
 
 
 @command_decorator
+def remove_applets():
+    with Device.connect(dispose=False) as device:
+        # It reboots automatically after the applets are removed, so no need to dispose.
+        return applet_manager.remove_applets(device)
+
+
+@command_decorator
+def remove_applet(applet_id):
+    with Device.connect(dispose=False) as device:
+        # It reboots automatically after the applet is removed.
+        return applet_manager.remove_applet(device, applet_id)
+
+
+@command_decorator
+def install_applet(applet_path):
+    with Device.connect() as device:
+        f = open(applet_path, 'rb')
+        content = f.read()
+        f.close()
+        return applet_manager.add_applet(device, content)
+
+
+@command_decorator
+def fetch_applet(applet_id, path):
+    with Device.connect() as device:
+        content = applet_manager.read_applet(device, applet_id)
+        with open(path, 'wb') as f:
+            f.write(content)
+
+
+@command_decorator
 def list_files(applet_id, verbose):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
@@ -176,3 +209,12 @@ def clear_file(applet_id, file_name_or_space):
             file.clear_file(device, applet_id, file_attrs.file_index)
         else:
             raise NeotoolsError('File not found')
+
+
+@command_decorator
+def system_info():
+    with Device.connect() as device:
+        version = get_version(device)
+        space = get_available_space(device)
+        del version['unknown']
+        return {**version, **space}

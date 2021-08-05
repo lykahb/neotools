@@ -1,5 +1,9 @@
 .idea
+.vscode
 .hypothesis
 .pytest_cache
+.project
 *.pyc
 *.egg-info/
+build/
+dist/

@@ -18,6 +18,7 @@ Plug in AlphaSmart and wait a few minutes till the operating system recognizes i
 
 ### USB captured data
 There is no open-source implementation of installing applets. So this is the focus of the USB set under usb_pcap.
+The file install_calculator302.pcapng has the most annotations.
 
 Captured with WireShark on Linux host, with NEO Manager 3.9.3 running on Windows XP virtual machine.
 

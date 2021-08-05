@@ -89,3 +89,9 @@ ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd
 ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd04", MODE="660", GROUP="plugdev"
 ```
 Make sure that your user is a member of the `plugdev` group.
+
+### Attempting to enter the Updater Mode
+The device displays this message and is not responsive.
+This happens when there are no applets installed. It is normal after running the
+Neotools command `applets clear`. To resolve the problem, install an applet,
+for example, AlphaWord or ControlPanel.

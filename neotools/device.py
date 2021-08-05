@@ -1,13 +1,14 @@
 import logging
+from collections import OrderedDict
 from contextlib import contextmanager
 from time import sleep
 
 import usb.core
 from usb import util
 
-from neotools.applet import AppletIds
-from neotools.message import Message, MessageConst, send_message, assert_success
-from neotools.util import NeotoolsError
+from neotools.applet.constants import AppletIds
+from neotools.message import Message, MessageConst, send_message
+from neotools.util import NeotoolsError, calculate_data_checksum, data_from_buf
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,15 @@ class Device:
             device = Device(Device.find())
             device.init(flip_to_comms)
             yield device
+        except Exception as e:
+            logger.exception(e)
         finally:
             if device and dispose:
                 device.dispose()
 
     @staticmethod
     def find():
-        logger.info('Searching for device')
+        logger.debug('Searching for device')
         devices = list(usb.core.find(find_all=True, idVendor=VENDOR_ID))
         if len(devices) == 0:
             raise NeotoolsError('Device not found')
@@ -58,7 +61,7 @@ class Device:
             self.flip_to_comms_mode()
             util.dispose_resources(self.dev)
             self.dev = None
-            logger.info('Connecting to Neo in communication mode')
+            logger.debug('Connecting to Neo in communication mode')
             while self.dev is None:
                 sleep(0.1)
                 self.dev = usb.core.find(idVendor=VENDOR_ID, idProduct=COM_PRODUCT_ID)
@@ -69,9 +72,10 @@ class Device:
             endpoints = intf.endpoints()
 
             def get_endpoint(direction):
-                predicate = lambda ep: \
-                    util.endpoint_type(ep.bmAttributes) == util.ENDPOINT_TYPE_BULK and \
-                    util.endpoint_direction(ep.bEndpointAddress) == direction
+                def predicate(ep):
+                    return \
+                        util.endpoint_type(ep.bmAttributes) == util.ENDPOINT_TYPE_BULK and \
+                        util.endpoint_direction(ep.bEndpointAddress) == direction
                 eps = list(filter(predicate, endpoints))
                 if len(eps) == 0:
                     raise NeotoolsError('Cannot find endpoint with direction %s' % direction)
@@ -85,7 +89,7 @@ class Device:
             self.flip_to_keyboard_mode()
 
     def flip_to_comms_mode(self):
-        logger.info('Switching Neo to communication mode')
+        logger.debug('Switching Neo to communication mode')
         # There is black magic here - the sequences used are not documented, but determined from a bus trace.
         self.dev.set_configuration()
         for i in [0xe0, 0xe1, 0xe2, 0xe3, 0xe4]:
@@ -98,11 +102,9 @@ class Device:
             )
 
     def flip_to_keyboard_mode(self):
-        logger.info('Switching Neo to keyboard mode')
+        logger.debug('Switching Neo to keyboard mode')
         self.dialogue_start()
-        message = Message(MessageConst.REQUEST_RESTART, [])
-        response = send_message(self, message)
-        assert_success(response, MessageConst.RESPONSE_RESTART)
+        restart(self)
         self.dialogue_end()
 
     def read(self, length, timeout=None):
@@ -179,14 +181,46 @@ class Device:
             raise NeotoolsError('ASM protocol version not supported: %s' % version)
 
 
-def get_system_memory(device):
+def get_available_space(device):
     device.dialogue_start()
     message = Message(MessageConst.REQUEST_GET_AVAIL_SPACE, [])
-    response = send_message(device, message)
-    assert response.command() == MessageConst.RESPONSE_GET_AVAIL_SPACE
+    response = send_message(device, message, MessageConst.RESPONSE_GET_AVAIL_SPACE)
     result = {
         'free_rom': response.argument(1, 4),
         'free_ram': response.argument(5, 2) * 256
     }
     device.dialogue_end()
     return result
+
+
+def restart(device):
+    message = Message(MessageConst.REQUEST_RESTART, [])
+    send_message(device, message, MessageConst.RESPONSE_RESTART)
+
+
+REVISION_FORMAT = {
+    'size': None,
+    'fields': OrderedDict([
+        ('unknown', (0x00, 3, int)),
+        ('revision_major', (0x04, 1, int)),
+        ('revision_minor', (0x05, 1, int)),
+        ('name', (0x06, 19, str)),
+        ('build_date', (0x19, 39, str))
+    ])
+}
+
+
+def get_version(device):
+    device.dialogue_start()
+    message = Message(MessageConst.REQUEST_VERSION, [])
+    response = send_message(device, message, MessageConst.RESPONSE_VERSION)
+    size = response.argument(1, 4)
+    expected_checksum = response.argument(5, 2)
+
+    buf = device.read(size)
+    checksum = calculate_data_checksum(buf)
+    if calculate_data_checksum(buf) == expected_checksum:
+        # OS 3.6 Neo device appear to calculate the checksum wrongly (off by one error?)
+        logger.debug(f'Ignoring data checksum error. Wanted {expected_checksum}, got {checksum}')
+    device.dialogue_end()
+    return data_from_buf(REVISION_FORMAT, buf)
