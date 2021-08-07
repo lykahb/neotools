@@ -68,7 +68,13 @@ Finalizing writing the applet
 Finalized writing the applet
 ```
 
-Inspect applets and manage their settings
+Remove all applets.
+```bash
+> neotools applets remove-all
+Are you sure you want to remove all applets? [y/N]: y
+```
+
+Inspect applets and manage their settings.
 ```bash
 > neotools applets list
 [
