@@ -113,8 +113,22 @@ Update system applet settings. Set idle time to five minutes.
 
 ## Installation
 
-Confirm that you have Python 3 on your machine. Install neotools from the Python package repository with:
-`pip3 install neotools`.
+### Linux
+
+1. Confirm that you have Python 3 on your machine.
+2. Install neotools from the Python package repository with:
+
+   `pip3 install neotools`
+
+### Mac
+
+1. Install a package manager [Brew](https://brew.sh).
+2. Install libusb, a cross-platform library to access USB devices:
+
+   `brew install libusb`
+3. Install neotools from the Python package repository with:
+
+   `pip3 install neotools`
 
 ## Troubleshooting
 
