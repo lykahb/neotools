@@ -137,11 +137,19 @@ Update system applet settings. Set idle time to five minutes.
 A simple way to fix it is to run the command with `sudo`. However, it is
 better to give granular udev permissions to neotools. Add the following rule to 
 the udev rules, into, for example `/lib/udev/rules.d/50-alphasmart.rules`.
+
+For systems based on Debian:
 ```
 ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd01", MODE="660", GROUP="plugdev"
 ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd04", MODE="660", GROUP="plugdev"
 ```
 Make sure that your user is a member of the `plugdev` group.
+
+For systems based on Arch:
+```
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd01", TAG+="uaccess"
+ACTION=="add", SUBSYSTEMS=="usb", ATTRS{idVendor}=="081e", ATTRS{idProduct}=="bd04", TAG+="uaccess"
+```
 
 ### Attempting to enter the Updater Mode
 The device displays this message and is not responsive.
