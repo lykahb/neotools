@@ -16,7 +16,7 @@ VENDOR_ID = 0x081e  # USB Vendor ID for the Neo, operating as a keyboard.
 HID_PRODUCT_ID = 0xbd04  # USB Product ID for the Neo, operating as a keyboard.
 COM_PRODUCT_ID = 0xbd01  # USB Product ID for the Neo, operating as a comms device
 HUB_PRODUCT_ID = 0x0100
-PROTOCOL_VERSION = 0x0230  # Minimum ASM protocol version that the device must support.
+PROTOCOL_VERSION = 0x0220  # Minimum ASM protocol version that the device must support.
 
 
 class Device:
