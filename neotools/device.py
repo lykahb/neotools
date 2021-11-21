@@ -105,7 +105,11 @@ class Device:
         logger.debug('Switching Neo to keyboard mode')
         self.dialogue_start()
         restart(self)
-        self.dialogue_end()
+        try:
+            self.dialogue_end()
+        except usb.USBError:
+            # Neo does not always reply when restarting
+            pass
 
     def read(self, length, timeout=None):
         if timeout is None:
