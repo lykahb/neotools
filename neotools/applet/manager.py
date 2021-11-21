@@ -28,10 +28,11 @@ def install_applet(device, content: bytes, force=False):
     if applet_type == AppletType.REGULAR:
         header = data_from_buf(APPLET_HEADER_FORMAT, content[0: APPLET_HEADER_FORMAT['size']])
 
-        if not force:
-            applet_list = read_applet_list(device)
-            if any(header['applet_id'] == applet['applet_id'] for applet in applet_list):
+        applet_list = read_applet_list(device)
+        if any(header['applet_id'] == applet['applet_id'] for applet in applet_list):
+            if not force:
                 raise NeotoolsError(f'Applet {header["name"]} is already installed')
+            remove_applet(device, header['applet_id'])
 
         required_size = header['ram_size'] + header['file_space']
         required_rom_size = header['rom_size']
