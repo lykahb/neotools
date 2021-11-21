@@ -148,6 +148,8 @@ def list_files(applet_id, verbose):
 
 @command_decorator
 def write_file(applet_id, file_name_or_space, text):
+    if applet_id is None:
+        applet_id = AppletIds.ALPHAWORD
     if applet_id == AppletIds.ALPHAWORD:
         text = import_text_to_neo(text)
 
