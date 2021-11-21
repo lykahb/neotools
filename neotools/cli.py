@@ -138,28 +138,34 @@ def fetch_applet(applet_id, path):
 
 
 @applets.command('remove-all')
-def remove_applets():
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def remove_applets(yes):
     """ Delete all applets from the device. """
-    click.confirm(text='Are you sure you want to remove all applets?', abort=True)
+    if not yes:
+        click.confirm(text='Are you sure you want to remove all applets?', abort=True)
     commands.remove_applets()
 
 
 @applets.command('remove',
                  short_help="Experimental. Delete an applet from the device. Note that it does not free the space.")
 @click.argument('applet_id', type=BASED_INT)
-def remove_applet(applet_id):
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def remove_applet(applet_id, yes):
     """ Delete an applet from the device. """
-    click.confirm(text='Are you sure you want to remove applet?' +
-                       'It will not free up the space and is meant only for development.', abort=True)
+    if not yes:
+        click.confirm(text='Are you sure you want to remove applet?' +
+                           'It will not free up the space and is meant only for development.', abort=True)
     commands.remove_applet(applet_id)
 
 
 @applets.command('install', short_help="Experimental. Install an applet. Use this at your own risk.")
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @click.option('--force', '-f', default=False, is_flag=True, help='Skip check if the applet exists')
-def install_applet(path, force):
-    click.confirm(text='Are you sure you want to install an applet? ' +
-                       'This is an experimental feature.', abort=True)
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def install_applet(path, force, yes):
+    if not yes:
+        click.confirm(text='Are you sure you want to install an applet? ' +
+                           'This is an experimental feature.', abort=True)
     commands.install_applet(path, force)
 
 
