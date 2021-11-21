@@ -9,8 +9,26 @@ from neotools import commands
 
 logger = logging.getLogger(__name__)
 
+class BasedIntParamType(click.ParamType):
+    name = "integer"
+
+    def convert(self, value, param, ctx):
+        if isinstance(value, int):
+            return value
+
+        try:
+            if value[:2].lower() == "0x":
+                return int(value[2:], 16)
+            elif value[:1] == "0":
+                return int(value, 8)
+            return int(value, 10)
+        except ValueError:
+            self.fail(f"{value!r} is not a valid integer", param, ctx)
+
+BASED_INT = BasedIntParamType()
+
 file_name_or_space_arg = partial(click.argument, 'file_name_or_space')
-applet_id_option = partial(click.option, '--applet-id', '-a', type=int)
+applet_id_option = partial(click.option, '--applet-id', '-a', type=BASED_INT)
 format_option = partial(
     click.option, '--format', '-f', 'format_',
     help='Format for the file names. For example, "{name}-{space}-{date:%x}.txt" '
@@ -65,7 +83,7 @@ def list_applets():
 
 
 @applets.command('get-settings')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('flag', type=int, nargs=-1)
 def applet_get_settings(applet_id, flag):
     """
@@ -82,7 +100,7 @@ def applet_get_settings(applet_id, flag):
 @applets.command('set-settings',
                  short_help='Update settings. Use this at your own risk - invalid settings' +
                             ' may disrupt work of an applet or the device.')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('ident', type=int)
 @click.argument('value', nargs=-1)
 def applet_set_settings(applet_id, ident, value):
@@ -108,7 +126,7 @@ def applet_set_settings(applet_id, ident, value):
 
 
 @applets.command('fetch')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('path', type=click.Path())
 def fetch_applet(applet_id, path):
     """
@@ -128,7 +146,7 @@ def remove_applets():
 
 @applets.command('remove',
                  short_help="Experimental. Delete an applet from the device. Note that it does not free the space.")
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 def remove_applet(applet_id):
     """ Delete an applet from the device. """
     click.confirm(text='Are you sure you want to remove applet?' +
