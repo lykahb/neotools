@@ -189,11 +189,12 @@ def read_all_files(applet_id, path, format_):
 
 
 @files.command('write')
+@applet_id_option()
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @file_name_or_space_arg()
-def write_file(path, file_name_or_space):
+def write_file(path, file_name_or_space, applet_id):
     contents = open(path).read()
-    commands.write_file(file_name_or_space, contents)
+    commands.write_file(applet_id, file_name_or_space, contents)
 
 
 @cli.command('info')
