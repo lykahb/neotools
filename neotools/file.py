@@ -224,7 +224,7 @@ def raw_write_file(device, buf, applet_id, file_index, raw):
     logger.info('Writing file complete')
 
 
-def create_file(device, filename, password, text, applet_id):
+def create_file(device, filename, password, data, applet_id):
     """
 
     Create a new file.
@@ -249,14 +249,14 @@ def create_file(device, filename, password, text, applet_id):
     :param device:
     :param filename:
     :param password:
-    :param text: The raw buffer to write.
+    :param data: The buffer to write.
     :param applet_id:
     :return: The new FileAttributes.
     """
     usage = get_applet_resource_usage(device, applet_id)
     available_space = get_available_space(device)
 
-    size = len(text)
+    size = len(data)
     if size + 1024 > available_space['free_ram']:
         # REVIEW: arbitrarily choosing to keep at least 1k unused on the device
         raise NeotoolsError('The device does not have enough RAM')
@@ -272,7 +272,7 @@ def create_file(device, filename, password, text, applet_id):
     # not sending it will still result in a new file, but the attributes will not be correct.
     message = Message(MessageConst.REQUEST_COMMIT, [(file_index, 4, 1), (applet_id, 5, 2)])
     send_message(device, message, MessageConst.RESPONSE_COMMIT)
-    raw_write_file(device, text, applet_id, file_index, True)
+    raw_write_file(device, data, applet_id, file_index, True)
     device.dialogue_end()
 
 
