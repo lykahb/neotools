@@ -255,8 +255,6 @@ def create_file(device, filename, password, data, applet_id):
     """
     usage = get_applet_resource_usage(device, applet_id)
     available_space = get_available_space(device)
-    if isinstance(data, str):
-        data = data.encode('utf-8')
 
     size = len(data)
     if size + 1024 > available_space['free_ram']:

@@ -9,8 +9,24 @@ from neotools import commands
 
 logger = logging.getLogger(__name__)
 
+class BasedIntParamType(click.ParamType):
+    name = "integer"
+
+    def convert(self, value, param, ctx):
+        if isinstance(value, int):
+            return value
+
+        try:
+            if value[:2].lower() == "0x":
+                return int(value[2:], 16)
+            return int(value, 10)
+        except ValueError:
+            self.fail(f"{value!r} is not a valid integer", param, ctx)
+
+BASED_INT = BasedIntParamType()
+
 file_name_or_space_arg = partial(click.argument, 'file_name_or_space')
-applet_id_option = partial(click.option, '--applet-id', '-a', type=int)
+applet_id_option = partial(click.option, '--applet-id', '-a', type=BASED_INT)
 format_option = partial(
     click.option, '--format', '-f', 'format_',
     help='Format for the file names. For example, "{name}-{space}-{date:%x}.txt" '
@@ -65,7 +81,7 @@ def list_applets():
 
 
 @applets.command('get-settings')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('flag', type=int, nargs=-1)
 def applet_get_settings(applet_id, flag):
     """
@@ -82,7 +98,7 @@ def applet_get_settings(applet_id, flag):
 @applets.command('set-settings',
                  short_help='Update settings. Use this at your own risk - invalid settings' +
                             ' may disrupt work of an applet or the device.')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('ident', type=int)
 @click.argument('value', nargs=-1)
 def applet_set_settings(applet_id, ident, value):
@@ -108,7 +124,7 @@ def applet_set_settings(applet_id, ident, value):
 
 
 @applets.command('fetch')
-@click.argument('applet_id', type=int)
+@click.argument('applet_id', type=BASED_INT)
 @click.argument('path', type=click.Path())
 def fetch_applet(applet_id, path):
     """
@@ -120,28 +136,34 @@ def fetch_applet(applet_id, path):
 
 
 @applets.command('remove-all')
-def remove_applets():
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def remove_applets(yes):
     """ Delete all applets from the device. """
-    click.confirm(text='Are you sure you want to remove all applets?', abort=True)
+    if not yes:
+        click.confirm(text='Are you sure you want to remove all applets?', abort=True)
     commands.remove_applets()
 
 
 @applets.command('remove',
                  short_help="Experimental. Delete an applet from the device. Note that it does not free the space.")
-@click.argument('applet_id', type=int)
-def remove_applet(applet_id):
+@click.argument('applet_id', type=BASED_INT)
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def remove_applet(applet_id, yes):
     """ Delete an applet from the device. """
-    click.confirm(text='Are you sure you want to remove applet?' +
-                       'It will not free up the space and is meant only for development.', abort=True)
+    if not yes:
+        click.confirm(text='Are you sure you want to remove applet?' +
+                           'It will not free up the space and is meant only for development.', abort=True)
     commands.remove_applet(applet_id)
 
 
 @applets.command('install', short_help="Experimental. Install an applet. Use this at your own risk.")
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @click.option('--force', '-f', default=False, is_flag=True, help='Skip check if the applet exists')
-def install_applet(path, force):
-    click.confirm(text='Are you sure you want to install an applet? ' +
-                       'This is an experimental feature.', abort=True)
+@click.option('--yes', '-y', default=False, is_flag=True, help='No confirmation prompt')
+def install_applet(path, force, yes):
+    if not yes:
+        click.confirm(text='Are you sure you want to install an applet? ' +
+                           'This is an experimental feature.', abort=True)
     commands.install_applet(path, force)
 
 
@@ -171,11 +193,12 @@ def read_all_files(applet_id, path, format_):
 
 
 @files.command('write')
+@applet_id_option()
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @file_name_or_space_arg()
-def write_file(path, file_name_or_space):
+def write_file(path, file_name_or_space, applet_id):
     contents = open(path).read()
-    commands.write_file(file_name_or_space, contents)
+    commands.write_file(applet_id, file_name_or_space, contents)
 
 
 @cli.command('info')

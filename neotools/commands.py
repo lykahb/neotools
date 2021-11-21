@@ -147,15 +147,19 @@ def list_files(applet_id, verbose):
 
 
 @command_decorator
-def write_file(file_name_or_space, text):
+def write_file(applet_id, file_name_or_space, text):
+    if applet_id is None:
+        applet_id = AppletIds.ALPHAWORD
+    if applet_id == AppletIds.ALPHAWORD:
+        text = import_text_to_neo(text)
+
     with Device.connect() as device:
-        raw_bytes = import_text_to_neo(text)
         device.dialogue_start()
-        file_attrs = file.get_file_by_name_or_space(device, AppletIds.ALPHAWORD, file_name_or_space)
+        file_attrs = file.get_file_by_name_or_space(device, applet_id, file_name_or_space)
         if file_attrs:
-            file.raw_write_file(device, raw_bytes, AppletIds.ALPHAWORD, file_attrs.file_index, True)
+            file.raw_write_file(device, text, applet_id, file_attrs.file_index, True)
         else:
-            file.create_file(device, file_name_or_space, 'write', text, AppletIds.ALPHAWORD)
+            file.create_file(device, file_name_or_space, 'write', text, applet_id)
         device.dialogue_end()
 
 
