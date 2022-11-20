@@ -55,6 +55,32 @@ Get the installed applet files from the device.
 > neotools applets fetch 0 romdump.os3kos
 ```
 
+Analyze applet files.
+```bash
+> neotools applets inspect ~/projects/AlphaSmart\ Manager\ 2/SmartApplets/ControlPanel.OS3KApp
+{
+  "applet_type": "Applet program",
+  "header": {
+    "signature": 3237998253,
+    "rom_size": 27412,
+    "ram_size": 416,
+    "settings_offset": 0,
+    "flags": 4278190208,
+    "applet_id": 40967,
+    "header_version": 1,
+    "file_count": 0,
+    "name": "Control Panel",
+    "version_major": 1,
+    "version_minor": 0,
+    "version_revision": 55,
+    "language_id": 1,
+    "info": "Copyright (c) 2005-2012 by Renaissance Learning, Inc.",
+    "min_asm_version": 0,
+    "file_space": 0
+  }
+}
+```
+
 Install applets.
 ```bash
 > neotools applets install ~/projects/AlphaSmart\ Manager\ 2/SmartApplets/ControlPanel.OS3KApp
