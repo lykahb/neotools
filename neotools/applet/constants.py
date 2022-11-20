@@ -98,7 +98,7 @@ class AppletIds:
 
 
 # The values match the classification of NEOManager, together with signatures
-class AppletType:
+class AppletType(Enum):
     REGULAR = 0x11
     SYSTEM_3 = 0
     OS3000_SMALL_ROM = 1

@@ -13,6 +13,14 @@ from neotools.util import calculate_data_checksum, NeotoolsError, data_from_buf,
 logger = logging.getLogger(__name__)
 
 
+def inspect_applet(content: bytes):
+    applet_type = classify_applet(content)
+    header = data_from_buf(APPLET_HEADER_FORMAT, content[0: APPLET_HEADER_FORMAT['size']])
+    return {
+        'applet_type': applet_type_to_str(applet_type),
+        'header': header
+    }
+
 # This function can also install ROM. I haven't tried it though.
 # For proper ROM installation it may be necessary to clean segments.
 def install_applet(device, content: bytes, force=False):
@@ -147,7 +155,7 @@ def classify_applet(content: bytes):
         elif sig_string == ROMSignature.OS3KNEO_SMALL_ROM:
             return AppletType.OS3KNEO_SMALL_ROM
         else:
-            raise NeotoolsError('Unknown type of applet')
+            raise NeotoolsError('Unknown type of applet: ' + str(sig_string))
 
 
 def remove_applet(device, applet_id):

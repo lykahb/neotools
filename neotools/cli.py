@@ -156,6 +156,13 @@ def remove_applet(applet_id, yes):
     commands.remove_applet(applet_id)
 
 
+@applets.command('inspect', short_help="Display details for an applet file")
+@click.argument('path', type=click.Path(exists=True, dir_okay=False))
+def install_applet(path):
+    applet_info = commands.inspect_applet(path)
+    print(json.dumps(applet_info, indent=2))
+
+
 @applets.command('install', short_help="Experimental. Install an applet. Use this at your own risk.")
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @click.option('--force', '-f', default=False, is_flag=True, help='Skip check if the applet exists')

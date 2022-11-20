@@ -119,6 +119,14 @@ def remove_applet(applet_id):
 
 
 @command_decorator
+def inspect_applet(applet_path):
+    f = open(applet_path, 'rb')
+    content = f.read()
+    f.close()
+    return applet_manager.inspect_applet(content)
+
+
+@command_decorator
 def install_applet(applet_path, force):
     with Device.connect() as device:
         f = open(applet_path, 'rb')
