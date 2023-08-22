@@ -8,7 +8,7 @@ from neotools.applet.applet import AppletIds, read_applet_list
 from neotools.applet.settings import get_settings, AppletSettingsType, set_settings, AppletSettings
 from neotools.applet import manager as applet_manager
 from neotools.device import Device, HID_PRODUCT_ID, COM_PRODUCT_ID, get_version, get_available_space
-from neotools.text_file import export_text_from_neo, import_text_to_neo
+from neotools.text_file import export_text_from_neo, import_text_to_neo, read_character_map_file, character_map_name_to_filepath
 from neotools.util import NeotoolsError
 
 logger = logging.getLogger(__name__)
@@ -52,22 +52,33 @@ def get_mode():
 
 
 @command_decorator
-def read_all_files(applet_id, path, name_format):
+def read_all_files(applet_id, path, name_format, character_map_name, character_map_path):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
+
+    character_map = get_character_map(applet_id, character_map_name, character_map_path)
+
     with Device.connect() as device:
         files = file.list_files(device, applet_id)
         for file_attrs in files:
-            text = read_text(device, applet_id, file_attrs)
+            text = read_text(device, applet_id, file_attrs, character_map)
             if len(text):
                 write_file_with_format(file_attrs, text, path, name_format)
 
 
-def read_text(device, applet_id, file_attrs):
+def read_text(device, applet_id, file_attrs, character_map):
     text = file.read_file(device, applet_id, file_attrs)
     if applet_id == AppletIds.ALPHAWORD:
-        text = export_text_from_neo(text)
+        text = export_text_from_neo(text, character_map)
     return text
+
+
+def get_character_map(applet_id, character_map_name, character_map_path):
+    if applet_id == AppletIds.ALPHAWORD:
+        if character_map_path is None:
+            character_map_path = character_map_name_to_filepath(character_map_name)
+        return read_character_map_file(character_map_path)
+    return None
 
 
 def write_file_with_format(file_attrs, text, path, name_format):
@@ -82,7 +93,7 @@ def write_file_with_format(file_attrs, text, path, name_format):
 
 
 @command_decorator
-def read_file(applet_id, file_name_or_space, path, name_format):
+def read_file(applet_id, file_name_or_space, path, name_format, character_map_name, character_map_path):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
 
@@ -91,7 +102,8 @@ def read_file(applet_id, file_name_or_space, path, name_format):
         if file_attrs is None:
             raise NeotoolsError('Text file with name or space %s does not exist' % file_name_or_space)
 
-        text = read_text(device, applet_id, file_attrs)
+        character_map = get_character_map(applet_id, character_map_name, character_map_path)
+        text = read_text(device, applet_id, file_attrs, character_map)
         if path:
             write_file_with_format(file_attrs, text, path, name_format)
         else:
@@ -155,11 +167,12 @@ def list_files(applet_id, verbose):
 
 
 @command_decorator
-def write_file(applet_id, file_name_or_space, text):
+def write_file(applet_id, file_name_or_space, text, character_map_name, character_map_path):
     if applet_id is None:
         applet_id = AppletIds.ALPHAWORD
     if applet_id == AppletIds.ALPHAWORD:
-        text = import_text_to_neo(text)
+        character_map = get_character_map(applet_id, character_map_name, character_map_path)
+        text = import_text_to_neo(text, character_map)
 
     with Device.connect() as device:
         device.dialogue_start()

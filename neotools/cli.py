@@ -6,6 +6,7 @@ from functools import partial
 import click
 
 from neotools import commands
+from neotools import constants
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,11 @@ format_option = partial(
          'may produce "File 3-3-11/02/20.txt" depending on your locale. '
          'See more date formatting options at'
          ' https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes')
+charmap_option = partial(
+    click.option, '--charmap',
+    type=click.STRING,
+    help='Name of character map. The full list of maps: ' + ', '.join(constants.CHARACTER_MAP_NAME_TO_RESOURCE_FILE_NAME))
+charmap_path_option = partial(click.option, '--charmap_path', type=click.Path(exists=True, dir_okay=False), help='Path to a character map file.')
 
 
 @click.group()
@@ -187,25 +193,31 @@ def list_all_files(applet_id, verbose):
 @file_name_or_space_arg()
 @click.option('--path', '-p', type=click.Path())
 @format_option()
-def read_file(file_name_or_space, applet_id, path, format_):
-    commands.read_file(applet_id, file_name_or_space, path, format_)
+@charmap_option()
+@charmap_path_option()
+def read_file(file_name_or_space, applet_id, path, format_, charmap, charmap_path):
+    commands.read_file(applet_id, file_name_or_space, path, format_, charmap, charmap_path)
 
 
 @files.command('read-all')
 @applet_id_option()
 @click.option('--path', '-p', type=click.Path(exists=True, file_okay=False, writable=True), required=True)
 @format_option()
-def read_all_files(applet_id, path, format_):
-    commands.read_all_files(applet_id, path, format_)
+@charmap_option()
+@charmap_path_option()
+def read_all_files(applet_id, path, format_, charmap, charmap_path):
+    commands.read_all_files(applet_id, path, format_, charmap, charmap_path)
 
 
 @files.command('write')
 @applet_id_option()
 @click.argument('path', type=click.Path(exists=True, dir_okay=False))
 @file_name_or_space_arg()
-def write_file(path, file_name_or_space, applet_id):
+@charmap_option()
+@charmap_path_option()
+def write_file(path, file_name_or_space, applet_id, charmap, charmap_path):
     contents = open(path).read()
-    commands.write_file(applet_id, file_name_or_space, contents)
+    commands.write_file(applet_id, file_name_or_space, contents, charmap, charmap_path)
 
 
 @cli.command('info')

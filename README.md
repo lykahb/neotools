@@ -20,16 +20,26 @@ Read file by name. Enter the name as it appears on your Neo, without extension.
 ```bash
 > neotools files read intro
 Introduction: ...
-````
+```
 
-Copy all files to the directory, preserving their names.
+Read file in another language. This is an advanced option to apply a character map that matches the layout of a [language font file](https://github.com/lykahb/neo-ua-font).
+
+```bash
+> neotools files read --charmap ua-mac 2
+Чув я, чи то снилось мені
+Що існує країна мрій
+В той країні росте чарівний гай
+В гай той може кожний ввійти
+```
+
+Copy all files to the directory, preserving their names. It supports the option `charmap` too.
 ```bash
 > neotools files read-all --path archives/
 > ls archives
 'File 1.txt'    'File 3.txt'    intro.txt
 ```
 
-Write file to Neo. It can write both by index and file name.
+Write file to Neo. It can write both by index and file name. It supports the option `charmap` too.
 ```bash
 > neotools files write notes.txt 1
 > neotools files write intro.txt intro
